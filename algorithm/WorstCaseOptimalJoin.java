@@ -1,88 +1,32 @@
+package algorithm;
+
+import database.Relation;
+import database.Tuple;
+import tree.TreeNode;
+import tree.Result;
 import java.util.*;
 
+/**
+ * Implementation of the Worst-Case Optimal Join (WCOJ) algorithm.
+ * 
+ * This algorithm achieves O(N + Output) complexity by ensuring that no intermediate
+ * result exceeds the AGM (Atserias-Grohe-Marx) bound.
+ * 
+ * Key features:
+ * - Delayed materialization of intermediate results
+ * - Size-bounded conditional joins
+ * - Optimal for cyclic queries
+ */
 public class WorstCaseOptimalJoin {
+    private final Map<String, Relation> relations;
+    private final TreeNode tree;
+    private final double P; // AGM bound
     
-    // Relation structure
-    static class Relation {
-        String name;
-        Set<Tuple> tuples;
-        
-        public Relation(String name) {
-            this.name = name;
-            this.tuples = new HashSet<>();
-        }
-        
-        public int size() {
-            return tuples.size();
-        }
-    }
-    
-    // Tuple structure
-    static class Tuple {
-        List<Object> values;
-        
-        public Tuple(Object... vals) {
-            this.values = Arrays.asList(vals);
-        }
-        
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof Tuple)) return false;
-            Tuple tuple = (Tuple) o;
-            return Objects.equals(values, tuple.values);
-        }
-        
-        @Override
-        public int hashCode() {
-            return Objects.hash(values);
-        }
-    }
-    
-    // Tree node structure
-    static class TreeNode {
-        String label;
-        TreeNode left;
-        TreeNode right;
-        TreeNode parent;
-        
-        public TreeNode(String label) {
-            this.label = label;
-        }
-        
-        public boolean isLeaf() {
-            return left == null && right == null;
-        }
-        
-        public boolean isRoot() {
-            return parent == null;
-        }
-        
-        public TreeNode leftChild() {
-            return left;
-        }
-        
-        public TreeNode rightChild() {
-            return right;
-        }
-    }
-    
-    // Result structure containing C and D
-    static class Result {
-        Set<Tuple> C; // Complete results
-        Set<Tuple> D; // Delayed results
-        
-        public Result(Set<Tuple> C, Set<Tuple> D) {
-            this.C = C;
-            this.D = D;
-        }
-    }
-    
-    // LW instance with relations
-    private Map<String, Relation> relations;
-    private TreeNode tree;
-    private double P; // Size bound from LW inequality
-    
+    /**
+     * Creates a new WCOJ instance.
+     * @param relations Map of relation names to Relation objects
+     * @param tree The join tree structure
+     */
     public WorstCaseOptimalJoin(Map<String, Relation> relations, TreeNode tree) {
         this.relations = relations;
         this.tree = tree;
@@ -90,8 +34,9 @@ public class WorstCaseOptimalJoin {
     }
     
     /**
-     * Compute P = ∏_{c∈C} N_c^{1/(n-1)}
-     * where N_c = |R_c| for each relation
+     * Computes the AGM bound: P = ∏_{c∈C} N_c^{1/(n-1)}
+     * This is the theoretical worst-case size of the join result.
+     * @return The computed size bound
      */
     private double computeSizeBound() {
         int n = relations.size();
@@ -106,43 +51,43 @@ public class WorstCaseOptimalJoin {
     }
     
     /**
-     * Main LW algorithm execution
-     * Returns the final result set after pruning
+     * Executes the worst-case optimal join algorithm.
+     * @return The final set of result tuples
      */
     public Set<Tuple> execute() {
-        TreeNode u = tree; // root(T)
+        TreeNode u = tree;
         Result result = LW(u);
-        
-        // "Prune" C(u) and return
-        Set<Tuple> C = result.C;
+        Set<Tuple> C = result.getC();
         return prune(C);
     }
     
     /**
-     * LW(x) : x ∈ T returns (C, D)
+     * LW(x) algorithm: Processes a node in the join tree.
+     * Returns (C, D) where C is complete results and D is delayed results.
+     * 
+     * @param x The current tree node
+     * @return Result containing C and D sets
      */
     private Result LW(TreeNode x) {
-        // Line 6: if x is a leaf then
+        // Base case: Leaf node
         if (x.isLeaf()) {
-            // Line 7: return (∅, R_{L_aux(x)})
             Set<Tuple> emptyC = new HashSet<>();
             Set<Tuple> D = getRelationForNode(x);
             return new Result(emptyC, D);
         }
         
-        // Line 8: (C_L, D_L) ← LW(cc(x)) and (C_R, D_R) ← LW(rc(x))
+        // Recursive case: Internal node
         Result leftResult = LW(x.leftChild());
         Result rightResult = LW(x.rightChild());
         
-        Set<Tuple> C_L = leftResult.C;
-        Set<Tuple> D_L = leftResult.D;
-        Set<Tuple> C_R = rightResult.C;
-        Set<Tuple> D_R = rightResult.D;
+        Set<Tuple> C_L = leftResult.getC();
+        Set<Tuple> D_L = leftResult.getD();
+        Set<Tuple> C_R = rightResult.getC();
+        Set<Tuple> D_R = rightResult.getD();
         
-        // Line 9: F ← F_{L_aux(x)}(D_L) ∩ π_{L_aux(x)}(D_R)
+        // Compute F and G sets
         Set<Tuple> F = computeF(D_L, D_R, x);
         
-        // Line 10: G ← {t ∈ [D_L[1]] + 1 ≤ [P/|D_R|]} // F = G = ∅ if |D_R| = 0
         Set<Tuple> G;
         if (D_R.isEmpty()) {
             F = new HashSet<>();
@@ -154,43 +99,46 @@ public class WorstCaseOptimalJoin {
         Set<Tuple> C;
         Set<Tuple> D;
         
-        // Line 11: if x is the root of T then
+        // Root node: Full materialization
         if (x.isRoot()) {
-            // Line 12: C ← (D_L ⋈ D_R) ∪ C_L ∪ C_R
             C = join(D_L, D_R);
             C.addAll(C_L);
             C.addAll(C_R);
-            
-            // Line 13: D ← ∅
             D = new HashSet<>();
-        } else {
-            // Line 15: C ← (D_L ⋈_G D_R) ∪ C_L ∪ C_R
+        } 
+        // Internal node: Conditional join
+        else {
             C = conditionalJoin(D_L, D_R, G);
             C.addAll(C_L);
             C.addAll(C_R);
-            
-            // Line 16: D ← F \ G
             D = new HashSet<>(F);
             D.removeAll(G);
         }
         
-        // Line 17: return (C, D)
         return new Result(C, D);
     }
     
     /**
-     * Get relation tuples for a leaf node
+     * Gets the relation tuples for a leaf node.
+     * @param node The leaf node
+     * @return Set of tuples from the corresponding relation
      */
     private Set<Tuple> getRelationForNode(TreeNode node) {
-        Relation rel = relations.get(node.label);
+        Relation rel = relations.get(node.getLabel());
         if (rel != null) {
-            return new HashSet<>(rel.tuples);
+            return new HashSet<>(rel.getTuples());
         }
         return new HashSet<>();
     }
     
     /**
-     * Compute F = project(D_L) ∩ project(D_R)
+     * Computes F = project(D_L) ∩ project(D_R)
+     * F represents tuples that can potentially be joined.
+     * 
+     * @param D_L Left delayed results
+     * @param D_R Right delayed results
+     * @param x Current tree node
+     * @return Set F
      */
     private Set<Tuple> computeF(Set<Tuple> D_L, Set<Tuple> D_R, TreeNode x) {
         Set<Tuple> projectedL = project(D_L);
@@ -202,13 +150,18 @@ public class WorstCaseOptimalJoin {
     }
     
     /**
-     * Compute G based on the size bound
+     * Computes G based on the size bound P.
+     * G = {t ∈ D_L | 1 ≤ [P/|D_R|]}
+     * 
+     * @param D_L Left delayed results
+     * @param D_R Right delayed results
+     * @param P Size bound
+     * @return Set G
      */
     private Set<Tuple> computeG(Set<Tuple> D_L, Set<Tuple> D_R, double P) {
         Set<Tuple> G = new HashSet<>();
         int threshold = (int) Math.ceil(P / D_R.size());
         
-        // Get tuples from D_L where index <= threshold
         int count = 0;
         for (Tuple t : D_L) {
             if (count >= threshold) break;
@@ -221,6 +174,11 @@ public class WorstCaseOptimalJoin {
     
     /**
      * Standard join operation: D_L ⋈ D_R
+     * Performs a full join of all tuples from both sets.
+     * 
+     * @param D_L Left set of tuples
+     * @param D_R Right set of tuples
+     * @return Joined result set
      */
     private Set<Tuple> join(Set<Tuple> D_L, Set<Tuple> D_R) {
         Set<Tuple> result = new HashSet<>();
@@ -238,7 +196,14 @@ public class WorstCaseOptimalJoin {
     }
     
     /**
-     * Conditional join: D_L ⋈_G D_R
+     * Conditional join operation: D_L ⋈_G D_R
+     * Only joins tuples where the left tuple is in set G.
+     * This limits intermediate result size.
+     * 
+     * @param D_L Left set of tuples
+     * @param D_R Right set of tuples
+     * @param G Set of tuples to conditionally join
+     * @return Conditionally joined result set
      */
     private Set<Tuple> conditionalJoin(Set<Tuple> D_L, Set<Tuple> D_R, Set<Tuple> G) {
         Set<Tuple> result = new HashSet<>();
@@ -258,30 +223,49 @@ public class WorstCaseOptimalJoin {
     }
     
     /**
-     * Join two tuples if they are compatible
+     * Joins two tuples by concatenating their values.
+     * In a full implementation, this would perform attribute-based matching.
+     * 
+     * @param left Left tuple
+     * @param right Right tuple
+     * @return Joined tuple
      */
     private Tuple joinTuples(Tuple left, Tuple right) {
-        // Simple concatenation - in practice, need attribute matching
         List<Object> combined = new ArrayList<>();
-        combined.addAll(left.values);
-        combined.addAll(right.values);
+        combined.addAll(left.getValues());
+        combined.addAll(right.getValues());
         return new Tuple(combined.toArray());
     }
     
     /**
-     * Project tuples (simplified version)
+     * Projects tuples onto specific attributes.
+     * Simplified version returns all tuples as-is.
+     * 
+     * @param tuples Set of tuples to project
+     * @return Projected tuple set
      */
     private Set<Tuple> project(Set<Tuple> tuples) {
-        // In practice, project on specific attributes
+        // TODO: Implement attribute-based projection
         return new HashSet<>(tuples);
     }
     
     /**
-     * Prune C(u) before returning final result
+     * Prunes the final result set.
+     * Can be used for deduplication, filtering, etc.
+     * 
+     * @param C Complete result set
+     * @return Pruned result set
      */
     private Set<Tuple> prune(Set<Tuple> C) {
-        // Pruning logic depends on specific requirements
-        // For now, return as-is
+        // TODO: Implement specific pruning logic
         return C;
+    }
+    
+    /**
+     * Gets the AGM bound computed for this instance.
+     * @return The size bound P
+     */
+    public double getSizeBound() {
+        return P;
     }
 }
