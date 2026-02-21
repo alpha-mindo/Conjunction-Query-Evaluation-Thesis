@@ -18,7 +18,24 @@ A comprehensive Java implementation of various join algorithms for conjunctive q
 │   ├── WorstCaseOptimalJoin.java  # WCOJ algorithm implementation
 │   └── [Future algorithms...]     # Additional join algorithms
 │
-└── Main.java                # Example usage and test cases
+├── benchmark/
+│   ├── BenchmarkRunner.java       # Main benchmarking framework
+│   ├── DatabaseGenerator.java     # Test database generator
+│   ├── QueryPattern.java          # Query pattern definitions
+│   ├── BenchmarkResult.java       # Result data structures
+│   ├── AlgorithmBenchmark.java    # Algorithm interface
+│   └── README.md                  # Benchmark documentation
+│
+├── tests/
+│   ├── TupleTest.java             # Unit tests for Tuple
+│   ├── RelationTest.java          # Unit tests for Relation
+│   ├── TreeNodeTest.java          # Unit tests for TreeNode
+│   ├── ResultTest.java            # Unit tests for Result
+│   ├── WorstCaseOptimalJoinTest.java  # WCOJ algorithm tests
+│   └── TestRunner.java            # JUnit test runner
+│
+├── Main.java                      # Example usage and demonstrations
+└── BenchmarkExample.java          # Benchmark usage examples
 ```
 
 ## 🔬 Implemented Algorithms
@@ -185,16 +202,62 @@ LW(x):
 
 ## 🧪 Testing & Benchmarking
 
-### Current Test Cases
-- Simple two-way joins
-- Three-way cyclic joins (triangle queries)
+### Unit Tests
+Located in `tests/` directory:
+- `TupleTest.java` - Tests for Tuple functionality
+- `RelationTest.java` - Tests for Relation operations
+- `TreeNodeTest.java` - Tests for TreeNode structure
+- `ResultTest.java` - Tests for Result container
+- `WorstCaseOptimalJoinTest.java` - Algorithm unit tests
 
-### Future Benchmarking
-- [ ] Performance comparison across algorithms
-- [ ] Scalability tests with varying input sizes
-- [ ] Cyclic vs. acyclic query performance
-- [ ] Memory usage profiling
-- [ ] Query plan optimization evaluation
+Run tests with JUnit 5:
+```bash
+javac -cp "lib/*:." tests/*.java database/*.java tree/*.java algorithm/*.java
+java -jar lib/junit-platform-console-standalone.jar --class-path . --scan-classpath
+```
+
+### Performance Benchmarking
+The `benchmark/` package provides comprehensive performance testing:
+
+**Quick Start:**
+```bash
+# Compile benchmark framework
+javac -d bin benchmark/*.java database/*.java tree/*.java algorithm/*.java
+
+# Run comprehensive benchmark (all patterns, multiple sizes)
+java -cp bin benchmark.BenchmarkRunner
+
+# Run specific query pattern with custom size
+java -cp bin benchmark.BenchmarkRunner LINEAR 1000
+java -cp bin benchmark.BenchmarkRunner CYCLIC 100
+```
+
+**Available Query Patterns:**
+- `TWO_WAY` - Simple R(A,B) ⋈ S(B,C)
+- `LINEAR` - Chain R(A,B) ⋈ S(B,C) ⋈ T(C,D)
+- `CYCLIC` - Triangle R(A,B) ⋈ S(B,C) ⋈ T(C,A)
+- `STAR` - Star join R(A,B) ⋈ S(A,C) ⋈ T(A,D)
+- `FOUR_WAY_LINEAR` - 4-relation chain
+- `CROSS_PRODUCT` - Cartesian product
+
+**Benchmark Metrics:**
+- ✅ Execution time (averaged over multiple runs with warmup)
+- ✅ Result size (number of output tuples)
+- ✅ AGM bound computation
+- ✅ Memory usage profiling
+- ✅ Scalability across different database sizes
+
+**Example Output:**
+```
+WCOJ | Linear Chain | DB Size: 1000 | Time: 0.028 ms | Results: 32000 | AGM: 31622.78 | Memory: 36.18 MB
+```
+
+See `benchmark/README.md` and `BenchmarkExample.java` for detailed usage examples.
+
+### Adding New Algorithms to Benchmark
+1. Implement the `AlgorithmBenchmark` interface
+2. Add your algorithm to `BenchmarkRunner`
+3. Run comparative benchmarks across all query patterns
 
 ## 🔧 Implementation Status
 
