@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Java Sources",
+            "type": "shell",
+            "command": "C:\\Program Files\\Java\\jdk-23\\bin\\javac.exe",
+            "args": [
+                "-d", "${workspaceFolder}\\bin",
+                "-cp", "${workspaceFolder}\\bin",
+                "${workspaceFolder}\\src\\database\\*.java",
+                "${workspaceFolder}\\src\\tree\\*.java",
+                "${workspaceFolder}\\src\\algorithm\\*.java",
+                "${workspaceFolder}\\src\\benchmark\\*.java"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": "$javac"
+        }
+    ]
+}
