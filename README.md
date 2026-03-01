@@ -1,92 +1,104 @@
-# Conjunction Query Evaluation - Algorithm Implementations
+# Conjunction Query Evaluation — WCOJ Benchmark
 
-A comprehensive Java implementation of various join algorithms for conjunctive query evaluation, focusing on worst-case optimal approaches and comparative analysis.
+A Java implementation of the **Loomis-Whitney skew-aware Worst-Case Optimal Join** algorithm for conjunctive query evaluation, with a Swing-based benchmarking GUI and a CLI benchmark runner.
 
 ## 📁 Project Structure
 
 ```
 .
-├── database/
-│   ├── Tuple.java           # Represents a tuple (row) in a relation
-│   └── Relation.java        # Represents a database relation (table)
+├── src/
+│   ├── database/
+│   │   ├── Tuple.java                  # Tuple (row) with attribute map
+│   │   └── Relation.java               # Relation (table) with schema
+│   │
+│   ├── tree/
+│   │   ├── TreeNode.java               # Binary join-tree node
+│   │   └── Result.java                 # C / D result-set container
+│   │
+│   ├── algorithm/
+│   │   └── WorstCaseOptimalJoin.java   # Loomis-Whitney WCOJ implementation
+│   │
+│   ├── benchmark/
+│   │   ├── BenchmarkRunner.java        # CLI benchmark entry point
+│   │   ├── BenchmarkResult.java        # Result POJO
+│   │   ├── DatabaseGenerator.java      # Synthetic database generator
+│   │   ├── QueryPattern.java           # Query-pattern enum
+│   │   ├── AlgorithmBenchmark.java     # Algorithm interface
+│   │   ├── WCOJAlgorithm.java          # WCOJ adapter
+│   │   ├── AlgorithmBenchmark.java     # Benchmark interface
+│   │   ├── BenchmarkGUI.java           # Swing GUI window
+│   │   └── BenchmarkGUILauncher.java   # GUI entry point (sets L&F)
+│   │
+│   ├── Main.java                       # Quick-start demos
+│   └── BenchmarkExample.java           # Programmatic benchmark examples
 │
-├── tree/
-│   ├── TreeNode.java        # Represents nodes in the join tree
-│   └── Result.java          # Container for C and D result sets
-│
-├── algorithm/
-│   ├── WorstCaseOptimalJoin.java  # WCOJ algorithm implementation
-│   └── [Future algorithms...]     # Additional join algorithms
-│
-├── benchmark/
-│   ├── BenchmarkRunner.java       # Main benchmarking framework
-│   ├── DatabaseGenerator.java     # Test database generator
-│   ├── QueryPattern.java          # Query pattern definitions
-│   ├── BenchmarkResult.java       # Result data structures
-│   ├── AlgorithmBenchmark.java    # Algorithm interface
-│   └── README.md                  # Benchmark documentation
-│
-├── tests/
-│   ├── TupleTest.java             # Unit tests for Tuple
-│   ├── RelationTest.java          # Unit tests for Relation
-│   ├── TreeNodeTest.java          # Unit tests for TreeNode
-│   ├── ResultTest.java            # Unit tests for Result
-│   ├── WorstCaseOptimalJoinTest.java  # WCOJ algorithm tests
-│   └── TestRunner.java            # JUnit test runner
-│
-├── Main.java                      # Example usage and demonstrations
-└── BenchmarkExample.java          # Benchmark usage examples
+├── bin/                                # Compiled classes (javac output)
+├── .vscode/
+│   ├── tasks.json                      # "Compile Java Sources" build task
+│   └── launch.json                     # GUI + CLI launch configs
+└── README.md
 ```
 
-## 🔬 Implemented Algorithms
+## 🔬 Implemented Algorithm
 
-### 1. Worst-Case Optimal Join (WCOJ)
+### Worst-Case Optimal Join (WCOJ) — Loomis-Whitney skew-aware
 **Status**: ✅ Implemented  
-**File**: `algorithm/WorstCaseOptimalJoin.java`  
-**Complexity**: O(N + Output)  
-**Best For**: Cyclic queries, multi-way joins
+**File**: `src/algorithm/WorstCaseOptimalJoin.java`  
+**Complexity**: O(N · IN^ρ* + OUT) — worst-case optimal in the AGM sense  
+**Best For**: Cyclic queries, star queries, multi-way joins with potential intermediate blowup
 
-The WCOJ algorithm uses delayed materialization and conditional joins to ensure no intermediate result exceeds the AGM bound.
-
-### 2. [Algorithm Name - Coming Soon]
-**Status**: 🚧 Planned  
-**Description**: TBD
-
-### 3. [Algorithm Name - Coming Soon]
-**Status**: 🚧 Planned  
-**Description**: TBD
+The algorithm recursively processes a binary join tree, partitioning join-key values at each internal node into **heavy hitters** (joined eagerly) and **light hitters** (fully joined within the subtree but deferred to D until the root). The threshold separating heavy from light is `⌈|F| / |D_R|⌉`, which ensures the total work is bounded by the AGM output-size bound.
 
 ## 🎯 Package Overview
 
-### `database` Package
-Contains the core database structures:
-- **`Tuple`**: Represents a single row with ordered attribute values
-- **`Relation`**: Represents a database table containing a set of tuples
+### `database` package
+- **`Tuple`** — row with a `List<Object> values` and a `Map<String,Integer> attributeMap`; supports `projectOn()`, `canJoin()`, `join()`, `projectCommon()`
+- **`Relation`** — table with an ordered schema (`List<String>`) and a `Set<Tuple>`
 
-### `tree` Package
-Contains join tree structures:
-- **`TreeNode`**: Represents nodes in the join tree (leaves = relations, internal = joins)
-- **`Result`**: Wraps the C (complete) and D (delayed) result sets
+### `tree` package
+- **`TreeNode`** — binary join-tree node; leaves correspond to base relations, internal nodes to join operations
+- **`Result`** — wraps two sets: **C** (complete, materialized results) and **D** (fully-joined but deferred results)
 
-### `algorithm` Package
-Contains the main algorithm:
-- **`WorstCaseOptimalJoin`**: Implements the WCOJ algorithm with O(N + Output) complexity
+### `algorithm` package
+- **`WorstCaseOptimalJoin`** — core WCOJ implementation; exposes `execute()` and `getSizeBound()` (fractional-edge-cover AGM bound)
+
+### `benchmark` package
+- **`BenchmarkRunner`** — CLI runner; runs warm-up + timed iterations, prints formatted tables
+- **`DatabaseGenerator`** — generates synthetic relations and join trees for all six query patterns
+- **`BenchmarkGUI`** — Swing GUI with teal sidebar (configuration), light main panel (results table + log)
+- **`BenchmarkGUILauncher`** — sets Metal L&F with custom colour overrides, then opens `BenchmarkGUI` on the EDT
 
 ## 🚀 Quick Start
 
-### Running Examples
+### Build
 
 ```bash
-javac Main.java
-java Main
+# From project root
+javac -d bin src\database\*.java src\tree\*.java src\algorithm\*.java src\benchmark\*.java
 ```
 
-The `Main.java` file demonstrates various algorithms with example queries:
-- Two-way joins (R ⋈ S)
-- Three-way cyclic joins (R ⋈ S ⋈ T) - the "triangle query"
-- Additional examples as more algorithms are implemented
+Or use the VS Code task: **Terminal → Run Build Task → Compile Java Sources**.
 
-### Basic Usage - WCOJ Algorithm
+### Run the GUI
+
+```bash
+java -cp bin benchmark.BenchmarkGUILauncher
+```
+
+Or use the VS Code launch config **BenchmarkGUI**.
+
+### Run the CLI benchmark
+
+```bash
+# All patterns, multiple sizes
+java -cp bin benchmark.BenchmarkRunner
+
+# Specific pattern + size
+java -cp bin benchmark.BenchmarkRunner LINEAR 1000
+java -cp bin benchmark.BenchmarkRunner CYCLIC 100
+```
+
+### Basic API usage — WCOJ Algorithm
 
 ```java
 import algorithm.WorstCaseOptimalJoin;
@@ -95,29 +107,28 @@ import database.Tuple;
 import tree.TreeNode;
 import java.util.*;
 
-// 1. Create relations
+// 1. Create relations with explicit schemas
 Map<String, Relation> relations = new HashMap<>();
 
-Relation R = new Relation("R");
+Relation R = new Relation("R", Arrays.asList("A", "B"));
 R.addTuple(new Tuple("a1", "b1"));
 R.addTuple(new Tuple("a2", "b2"));
 relations.put("R", R);
 
-Relation S = new Relation("S");
+Relation S = new Relation("S", Arrays.asList("B", "C"));
 S.addTuple(new Tuple("b1", "c1"));
 S.addTuple(new Tuple("b2", "c2"));
 relations.put("S", S);
 
-// 2. Build join tree
+// 2. Build binary join tree  (leaves = relation names)
 TreeNode root = new TreeNode("root");
-TreeNode leftLeaf = new TreeNode("R");
-TreeNode rightLeaf = new TreeNode("S");
-root.setLeft(leftLeaf);
-root.setRight(rightLeaf);
+root.setLeft(new TreeNode("R"));
+root.setRight(new TreeNode("S"));
 
 // 3. Execute WCOJ
 WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, root);
 Set<Tuple> results = wcoj.execute();
+System.out.println("AGM bound: " + wcoj.getSizeBound());
 
 // 4. Process results
 for (Tuple t : results) {
@@ -125,218 +136,114 @@ for (Tuple t : results) {
 }
 ```
 
-## 📊 Algorithm Comparison
+## 📊 Query Patterns Supported
 
-| Algorithm | Time Complexity | Space | Best Use Case | Status |
-|-----------|----------------|-------|---------------|--------|
-| WCOJ      | O(N + Output)  | O(N)  | Cyclic queries, multi-way joins | ✅ |
-| [TBD]     | TBD            | TBD   | TBD           | 🚧 |
-| [TBD]     | TBD            | TBD   | TBD           | 🚧 |
+| Pattern | Query | Relations | Notes |
+|---------|-------|-----------|-------|
+| `TWO_WAY` | R(A,B) ⋈ S(B,C) | 2 | Simple join |
+| `LINEAR` | R(A,B) ⋈ S(B,C) ⋈ T(C,D) | 3 | Chain |
+| `CYCLIC` | R(A,B) ⋈ S(B,C) ⋈ T(C,A) | 3 | Triangle — WCOJ excels here |
+| `STAR` | R(A,B) ⋈ S(A,C) ⋈ T(A,D) | 3 | Star on attribute A |
+| `FOUR_WAY_LINEAR` | R ⋈ S ⋈ T ⋈ U | 4 | 4-relation chain |
+| `CROSS_PRODUCT` | R(A) × S(B) | 2 | No shared attributes |
 
 ## 📖 Algorithm Details
 
-### Worst-Case Optimal Join (WCOJ)
-
-#### Overview
-- **Time Complexity**: O(N + Output) where N is the input size and Output is the result size
-- **Worst-case optimal** for conjunctive queries
-- Particularly efficient for cyclic queries
+### Loomis-Whitney skew-aware WCOJ
 
 #### Key Concepts
 
-1. **AGM Bound**: `P = ∏_{c∈C} N_c^{1/(n-1)}`
-   - Theoretical worst-case size of join results
-   - Algorithm ensures no intermediate result exceeds this bound
+1. **AGM Bound** (fractional edge cover):
+   $$P = \prod_{R} |R|^{1/d(R)}$$
+   where $d(R)$ is the maximum degree of any attribute in $R$'s schema. This is a tighter bound than the naive $1/(n{-}1)$ exponent for most real query shapes.
 
-2. **C and D Sets**:
-   - **C**: Complete results (fully materialized)
-   - **D**: Delayed results (deferred processing)
-   - Strategy avoids exponential blowup in intermediate results
+2. **C and D sets**:
+   - **C** — tuples that have been fully joined and are part of the final answer
+   - **D** — fully-joined subtree tuples that are deferred to be joined at a higher level or at the root
 
-3. **Conditional Join** (⋈_G):
-   - Only materializes tuples that satisfy size constraints
-   - Limits intermediate result sizes based on AGM bound
+3. **Heavy vs. light hitters** at node `x`:
+   - `F = π_λ(D_L) ∩ π_λ(D_R)` — join-key values that appear in both sides
+   - threshold `= ⌈|F| / |D_R|⌉`
+   - `G = selectTop(F, threshold)` — heavy-hitter keys → joined eagerly
+   - `F \ G` — light-hitter keys → fully joined within subtree, deferred in D
 
-#### Algorithm Flow
+#### Pseudocode
 
 ```
-LW(x):
-  if x is leaf:
-    return (∅, relation_tuples)
-  
-  (C_L, D_L) ← LW(left_child)
-  (C_R, D_R) ← LW(right_child)
-  
-  F ← project(D_L) ∩ project(D_R)
-  G ← top-⌈P/|D_R|⌉ tuples from F
-  
-  if x is root:
-    C ← (D_L ⋈ D_R) ∪ C_L ∪ C_R
-    D ← ∅
+loomisWhitney(node):
+  if node is leaf:
+    return (∅, tuples_of_relation(node))
+
+  (C_L, D_L) ← loomisWhitney(node.left)
+  (C_R, D_R) ← loomisWhitney(node.right)
+
+  F = π_λ(D_L) ∩ π_λ(D_R)         // matching join-key values
+  P = max(1, |F|)
+  threshold = max(1, P / |D_R|)
+  G = selectTop(F, threshold)        // heavy hitters
+
+  if node is root:
+    C = (D_L ⋈ D_R) ∪ C_L ∪ C_R
+    D = ∅
   else:
-    C ← (D_L ⋈_G D_R) ∪ C_L ∪ C_R
-    D ← F \ G
-  
+    C = (D_L ⋈_G D_R) ∪ C_L ∪ C_R  // join heavy-hitter tuples
+    D = D_L ⋈_{F\G} D_R             // full join for light hitters, deferred
+
   return (C, D)
 ```
 
-#### When to Use WCOJ
-- **Cyclic queries** (e.g., triangle queries, clique queries)
-- **Multi-way joins** with complex patterns
-- **Queries where intermediate results might explode**
-
 #### References
-- **AGM Bound**: Atserias, Grohe, Marx (2008) "Size Bounds and Query Plans for Relational Joins"
-- **Leapfrog Join**: Veldhuizen (2014) "Leapfrog Triejoin: A Simple, Worst-Case Optimal Join Algorithm"
-- **WCOJ Survey**: Ngo et al. (2018) "Worst-Case Optimal Join Algorithms"
+- Atserias, Grohe, Marx (2008) — "Size Bounds and Query Plans for Relational Joins" (AGM bound)
+- Ngo, Porat, Ré, Rudra (2012/2014) — "Skew strikes back: New developments in the theory of join algorithms"
+- Ngo et al. (2018) — "Worst-Case Optimal Join Algorithms" (survey)
 
----
+## 🧪 Benchmarking
 
-### [Future Algorithm 1]
-*Coming soon...*
+### GUI
+Launch `benchmark.BenchmarkGUILauncher`. The window has:
+- **Left sidebar** — select query pattern, DB size, or tick *Run all patterns*; green **Run Benchmark** button, **Clear Results** button
+- **Right panel** — results table (Query Pattern, DB Size, Time (ms), Result Size, AGM Bound, Memory (MB)); output log below
 
----
-
-### [Future Algorithm 2]
-*Coming soon...*
-
-## 🧪 Testing & Benchmarking
-
-### Unit Tests
-Located in `tests/` directory:
-- `TupleTest.java` - Tests for Tuple functionality
-- `RelationTest.java` - Tests for Relation operations
-- `TreeNodeTest.java` - Tests for TreeNode structure
-- `ResultTest.java` - Tests for Result container
-- `WorstCaseOptimalJoinTest.java` - Algorithm unit tests
-
-Run tests with JUnit 5:
+### CLI
 ```bash
-javac -cp "lib/*:." tests/*.java database/*.java tree/*.java algorithm/*.java
-java -jar lib/junit-platform-console-standalone.jar --class-path . --scan-classpath
-```
-
-### Performance Benchmarking
-The `benchmark/` package provides comprehensive performance testing:
-
-**Quick Start:**
-```bash
-# Compile benchmark framework
-javac -d bin benchmark/*.java database/*.java tree/*.java algorithm/*.java
-
-# Run comprehensive benchmark (all patterns, multiple sizes)
+# All patterns (5 warmup + 5 timed runs each)
 java -cp bin benchmark.BenchmarkRunner
 
-# Run specific query pattern with custom size
-java -cp bin benchmark.BenchmarkRunner LINEAR 1000
-java -cp bin benchmark.BenchmarkRunner CYCLIC 100
+# Specific pattern + DB size
+java -cp bin benchmark.BenchmarkRunner TWO_WAY 1000
+java -cp bin benchmark.BenchmarkRunner CYCLIC 50
 ```
 
-**Available Query Patterns:**
-- `TWO_WAY` - Simple R(A,B) ⋈ S(B,C)
-- `LINEAR` - Chain R(A,B) ⋈ S(B,C) ⋈ T(C,D)
-- `CYCLIC` - Triangle R(A,B) ⋈ S(B,C) ⋈ T(C,A)
-- `STAR` - Star join R(A,B) ⋈ S(A,C) ⋈ T(A,D)
-- `FOUR_WAY_LINEAR` - 4-relation chain
-- `CROSS_PRODUCT` - Cartesian product
+**Benchmark metrics:**
+- Execution time — averaged over 5 runs after 3 warmup runs
+- Result size — number of output tuples
+- AGM bound — fractional-edge-cover bound
+- Memory usage — heap delta before/after
 
-**Benchmark Metrics:**
-- ✅ Execution time (averaged over multiple runs with warmup)
-- ✅ Result size (number of output tuples)
-- ✅ AGM bound computation
-- ✅ Memory usage profiling
-- ✅ Scalability across different database sizes
-
-**Example Output:**
-```
-WCOJ | Linear Chain | DB Size: 1000 | Time: 0.028 ms | Results: 32000 | AGM: 31622.78 | Memory: 36.18 MB
-```
-
-See `benchmark/README.md` and `BenchmarkExample.java` for detailed usage examples.
-
-### Adding New Algorithms to Benchmark
-1. Implement the `AlgorithmBenchmark` interface
-2. Add your algorithm to `BenchmarkRunner`
-3. Run comparative benchmarks across all query patterns
+### Adding a new algorithm
+1. Implement `AlgorithmBenchmark` (`execute()`, `getName()`, `getSizeBound()`)
+2. Wrap it in an adapter and pass it to `BenchmarkRunner.runBenchmark(adapter, pattern, size)`
 
 ## 🔧 Implementation Status
 
-### Completed Features
-- ✅ Complete WCOJ algorithm structure
-- ✅ AGM bound computation
-- ✅ Delayed materialization strategy
-- ✅ Conditional join operations
-- ✅ Clean modular architecture
-- ✅ Comprehensive documentation
-- ✅ Basic example queries
-
-### In Progress
-- 🚧 Additional join algorithms
-- 🚧 Performance benchmarking suite
-- 🚧 Query optimization framework
-
-### Planned Enhancements
-- [ ] Attribute-based join matching
-- [ ] Schema management system
-- [ ] Hash-based indexes for faster lookups
-- [ ] Leapfrog iterators implementation
-- [ ] Memory management and disk spilling
-- [ ] Query optimization and tree selection
-- [ ] Comparative performance analysis
-- [ ] Visual query plan representation
+### Completed
+- ✅ Loomis-Whitney skew-aware WCOJ algorithm
+- ✅ Fractional-edge-cover AGM bound
+- ✅ Heavy/light hitter partition with per-node threshold
+- ✅ Fully-joined D-set propagation (correct multi-level deferral)
+- ✅ Attribute-aware `Tuple` (schema + `projectOn` / `canJoin` / `join`)
+- ✅ Six query patterns with synthetic database generator
+- ✅ CLI benchmark runner (warmup + timed iterations, formatted table)
+- ✅ Swing GUI with sidebar layout (Metal L&F, custom colour theme)
+- ✅ VS Code tasks and launch configs
 
 ## 📚 Background & Motivation
 
-### Why Study Different Join Algorithms?
-
-Join algorithms are fundamental to database query processing. Different algorithms excel in different scenarios:
-
-- **Traditional Binary Joins**: Good for simple chain queries
-- **Worst-Case Optimal Joins**: Excel at cyclic queries and avoid intermediate result explosions
-- **Hash Joins**: Fast for equi-joins with good hash distribution
-- **Sort-Merge Joins**: Efficient when inputs are pre-sorted
-
-### The Problem with Traditional Approaches
-
-Traditional binary join plans can suffer exponential blowup:
+Traditional binary join plans can suffer exponential intermediate-result blowup:
 ```
-(R ⋈ S) ⋈ T
+(R ⋈ S) ⋈ T   →  |R ⋈ S| can be O(N²) before joining with T
 ```
-The intermediate result `R ⋈ S` might be huge!
-
-### Our Solution
-
-This project implements and compares multiple join strategies to:
-1. Understand their theoretical foundations
-2. Measure practical performance differences
-3. Identify optimal use cases for each algorithm
-4. Provide a reference implementation for academic study
-
-## 🤝 Benefits of This Architecture
-
-### Modularity
-- Each package has a clear responsibility
-- Easy to add new algorithms without modifying existing code
-- Simple to extend with new features
-- Algorithms share common data structures
-
-### Maintainability
-- Clear separation of concerns
-- Well-documented with JavaDoc
-- Straightforward to test individual components
-- Easy to update algorithms independently
-
-### Extensibility
-- Easy to add new database structures (e.g., Schema, Index)
-- Simple to implement alternative join strategies
-- Straightforward to add optimization techniques
-- Ready for comparative benchmarking
-
-### Comparative Analysis Ready
-- Common interfaces allow algorithm comparison
-- Shared data structures enable fair benchmarking
-- Easy to swap algorithms for the same query
-- Structured for performance profiling
+Worst-case optimal join algorithms guarantee that the **total work is bounded by the AGM output-size bound**, which for cyclic queries (e.g., triangle) is $O(N^{3/2})$ — far below the naive $O(N^3)$. The Loomis-Whitney framework achieves this by deferring light-hitter groups and immediately processing heavy-hitter groups, so no intermediate set exceeds the bound.
 
 ## 📝 Documentation
 
@@ -347,43 +254,15 @@ This project implements and compares multiple join strategies to:
 
 ## 🎓 Academic Context
 
-This implementation is part of a thesis on **Conjunction Query Evaluation**, demonstrating:
-- Practical implementation of multiple join algorithms
-- Comparative analysis of algorithmic approaches
-- Performance characteristics across query types
-- Theoretical foundations applied to real-world scenarios
-
-### Research Goals
-1. Implement various conjunctive query evaluation algorithms
-2. Compare performance characteristics empirically
-3. Identify optimal use cases for each approach
-4. Provide educational reference implementations
+This implementation is part of a Bachelor thesis at the **GUC (German University in Cairo)** on **Conjunction Query Evaluation**. The goal is to provide a clean, documented Java reference implementation of the Loomis-Whitney skew-aware WCOJ algorithm and an empirical benchmarking framework that demonstrates its performance characteristics across different query shapes and database sizes.
 
 ## 🛠️ Development Roadmap
 
-### Phase 1: Foundation (Current)
-- [x] WCOJ implementation
-- [x] Core data structures
-- [x] Modular architecture
-- [x] Basic examples
-
-### Phase 2: Additional Algorithms
-- [ ] Implement Algorithm 2
-- [ ] Implement Algorithm 3
-- [ ] Implement Algorithm 4
-- [ ] Standardize algorithm interfaces
-
-### Phase 3: Benchmarking
-- [ ] Create comprehensive test suite
-- [ ] Performance profiling framework
-- [ ] Comparative analysis tools
-- [ ] Visualization of results
-
-### Phase 4: Optimization
-- [ ] Advanced indexing structures
-- [ ] Query plan optimization
-- [ ] Memory management
-- [ ] Parallel execution support
+- [ ] Hash-indexed join to replace nested-loop join in `loomisWhitney()`
+- [ ] Leapfrog trie-join iterator
+- [ ] Additional join algorithms for comparison (e.g., Yannakakis, NPRR)
+- [ ] Query optimizer / join-tree selector
+- [ ] Export benchmark results to CSV / charts in GUI
 
 ## 📫 Contributing
 
