@@ -5,10 +5,18 @@ import java.util.*;
 public class Relation {
     private final String name;
     private final Set<Tuple> tuples;
+    private List<String> schema; // Attribute names
     
     public Relation(String name) {
         this.name = name;
         this.tuples = new HashSet<>();
+        this.schema = new ArrayList<>();
+    }
+    
+    public Relation(String name, List<String> schema) {
+        this.name = name;
+        this.tuples = new HashSet<>();
+        this.schema = new ArrayList<>(schema);
     }
     
     public String getName() {
@@ -29,6 +37,14 @@ public class Relation {
     
     public boolean isEmpty() {
         return tuples.isEmpty();
+    }
+    
+    public List<String> getSchema() {
+        return schema;
+    }
+    
+    public void setSchema(List<String> schema) {
+        this.schema = new ArrayList<>(schema);
     }
     
     @Override

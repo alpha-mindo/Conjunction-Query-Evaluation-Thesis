@@ -39,8 +39,8 @@ public class DatabaseGenerator {
     private static Object[] generateTwoWayJoin(int size) {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
-        Relation S = new Relation("S");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
+        Relation S = new Relation("S", Arrays.asList("B", "C"));
         
         for (int i = 0; i < size; i++) {
             R.addTuple(new Tuple("a" + i, "b" + (i % (size / 2))));
@@ -61,9 +61,9 @@ public class DatabaseGenerator {
     private static Object[] generateLinearChain(int size) {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
-        Relation S = new Relation("S");
-        Relation T = new Relation("T");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
+        Relation S = new Relation("S", Arrays.asList("B", "C"));
+        Relation T = new Relation("T", Arrays.asList("C", "D"));
         
         int halfSize = size / 2;
         int thirdSize = size / 3;
@@ -92,9 +92,9 @@ public class DatabaseGenerator {
     private static Object[] generateCyclicQuery(int size) {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
-        Relation S = new Relation("S");
-        Relation T = new Relation("T");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
+        Relation S = new Relation("S", Arrays.asList("B", "C"));
+        Relation T = new Relation("T", Arrays.asList("C", "A"));
         
         int cycleSize = Math.min(size, 100); // Limit cycle size to avoid huge results
         
@@ -122,9 +122,9 @@ public class DatabaseGenerator {
     private static Object[] generateStarQuery(int size) {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
-        Relation S = new Relation("S");
-        Relation T = new Relation("T");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
+        Relation S = new Relation("S", Arrays.asList("A", "C"));
+        Relation T = new Relation("T", Arrays.asList("A", "D"));
         
         int centerSize = Math.min(size / 10, 50); // Central join attribute has fewer values
         
@@ -152,10 +152,10 @@ public class DatabaseGenerator {
     private static Object[] generateFourWayLinear(int size) {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
-        Relation S = new Relation("S");
-        Relation T = new Relation("T");
-        Relation U = new Relation("U");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
+        Relation S = new Relation("S", Arrays.asList("B", "C"));
+        Relation T = new Relation("T", Arrays.asList("C", "D"));
+        Relation U = new Relation("U", Arrays.asList("D", "E"));
         
         int halfSize = size / 2;
         int thirdSize = size / 3;
@@ -190,8 +190,8 @@ public class DatabaseGenerator {
     private static Object[] generateCrossProduct(int size) {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
-        Relation S = new Relation("S");
+        Relation R = new Relation("R", Arrays.asList("A"));
+        Relation S = new Relation("S", Arrays.asList("B"));
         
         int smallSize = Math.min(size, 50); // Limit cross product size
         

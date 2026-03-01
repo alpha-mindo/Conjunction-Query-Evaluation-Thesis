@@ -18,13 +18,13 @@ public class Main {
     private static void simpleTwoWayJoin() {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
         R.addTuple(new Tuple("a1", "b1"));
         R.addTuple(new Tuple("a2", "b2"));
         R.addTuple(new Tuple("a3", "b1"));
         relations.put("R", R);
         
-        Relation S = new Relation("S");
+        Relation S = new Relation("S", Arrays.asList("B", "C"));
         S.addTuple(new Tuple("b1", "c1"));
         S.addTuple(new Tuple("b2", "c2"));
         S.addTuple(new Tuple("b1", "c3"));
@@ -50,19 +50,19 @@ public class Main {
     private static void threeWayCyclicJoin() {
         Map<String, Relation> relations = new HashMap<>();
         
-        Relation R = new Relation("R");
+        Relation R = new Relation("R", Arrays.asList("A", "B"));
         R.addTuple(new Tuple("a1", "b1"));
         R.addTuple(new Tuple("a2", "b2"));
         R.addTuple(new Tuple("a3", "b3"));
         relations.put("R", R);
         
-        Relation S = new Relation("S");
+        Relation S = new Relation("S", Arrays.asList("B", "C"));
         S.addTuple(new Tuple("b1", "c1"));
         S.addTuple(new Tuple("b2", "c2"));
         S.addTuple(new Tuple("b3", "c3"));
         relations.put("S", S);
         
-        Relation T = new Relation("T");
+        Relation T = new Relation("T", Arrays.asList("C", "A"));
         T.addTuple(new Tuple("c1", "a1"));
         T.addTuple(new Tuple("c2", "a2"));
         T.addTuple(new Tuple("c3", "a3"));
