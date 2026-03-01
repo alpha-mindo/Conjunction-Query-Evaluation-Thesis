@@ -3,3 +3,9 @@
 # Bachelor thesis template
 bachelor_thesis_template/
 bachelor_thesis_template*
+
+bin*
+bin/
+
+# VS Code
+.vscode/
