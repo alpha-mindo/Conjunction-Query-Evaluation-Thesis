@@ -128,11 +128,21 @@ public class WorstCaseOptimalJoin {
             C.addAll(C_R);
             D = new HashSet<>();
         } else {
-            C = conditionalJoin(D_L, D_R, G, x); // Pass x to get λ(x) for projection
+            C = conditionalJoin(D_L, D_R, G, x);
             C.addAll(C_L);
             C.addAll(C_R);
-            D = new HashSet<>(F);
-            D.removeAll(G);
+            // D ← {t ∈ D_L : π_λ(x)(t) ∈ F \ G}
+            // Carry the ORIGINAL full tuples whose projection falls in F\G
+            Set<Tuple> deferredKeys = new HashSet<>(F);
+            deferredKeys.removeAll(G);
+            List<String> lambda = getLambda(x);
+            D = new HashSet<>();
+            for (Tuple t : D_L) {
+                Tuple projected = t.projectOn(lambda);
+                if (deferredKeys.contains(projected)) {
+                    D.add(t);
+                }
+            }
         }
         
         return new Result(C, D);
