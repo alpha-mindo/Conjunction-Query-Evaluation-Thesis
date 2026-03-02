@@ -55,9 +55,10 @@ public class BenchmarkGUI extends JFrame {
     private static final int[]    COL_WIDTHS = { 170, 85, 100, 110, 110, 110 };
 
     // ── Components ─────────────────────────────────────────────────────────────
-    private final DefaultTableModel tableModel;
-    private final JTable            resultTable;
-    private final JTextArea         logArea;
+    private final DefaultTableModel         tableModel;
+    private final JTable                     resultTable;
+    private final List<Map<String,Relation>> storedRelations = new ArrayList<>();
+    private final JTextArea                  logArea;
     private final JButton           runBtn;
     private final JButton           clearBtn;
     private final JComboBox<String> patternBox;
@@ -78,6 +79,12 @@ public class BenchmarkGUI extends JFrame {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         resultTable = buildTable();
+        resultTable.getSelectionModel().addListSelectionListener(evt -> {
+            if (evt.getValueIsAdjusting()) return;
+            int sel = resultTable.getSelectedRow();
+            if (sel >= 0 && sel < storedRelations.size())
+                showInspection(storedRelations.get(sel));
+        });
 
         logArea = new JTextArea();
         logArea.setEditable(false);
@@ -115,6 +122,7 @@ public class BenchmarkGUI extends JFrame {
         runBtn.addActionListener(this::onRun);
         clearBtn.addActionListener(e -> {
             tableModel.setRowCount(0);
+            storedRelations.clear();
             logArea.setText("");
             setStatus("Cleared.", TEXT_SEC);
         });
@@ -318,10 +326,10 @@ public class BenchmarkGUI extends JFrame {
         progressBar.setIndeterminate(true);
         setStatus("Running…", new Color(22, 100, 160));
 
-        SwingWorker<List<BenchmarkResult>, String> worker = new SwingWorker<>() {
+        SwingWorker<List<RunRecord>, String> worker = new SwingWorker<>() {
             @Override
-            protected List<BenchmarkResult> doInBackground() {
-                List<BenchmarkResult> all = new ArrayList<>();
+            protected List<RunRecord> doInBackground() {
+                List<RunRecord> all = new ArrayList<>();
                 if (allPatternsBox.isSelected()) {
                     int[] small  = {10, 50, 100};
                     int[] medium = {100, 500, 1000};
@@ -333,7 +341,7 @@ public class BenchmarkGUI extends JFrame {
                     for (QueryPattern pat : patterns) {
                         int[] sizes = (pat == QueryPattern.CYCLIC) ? small : medium;
                         for (int sz : sizes) {
-                            BenchmarkResult r = runOne(pat, sz);
+                            RunRecord r = runOne(pat, sz);
                             if (r != null) all.add(r);
                         }
                     }
@@ -346,13 +354,13 @@ public class BenchmarkGUI extends JFrame {
                         publish("[WARN] Invalid DB size — using 100");
                         size = 100;
                     }
-                    BenchmarkResult r = runOne(QueryPattern.valueOf(patName), size);
+                    RunRecord r = runOne(QueryPattern.valueOf(patName), size);
                     if (r != null) all.add(r);
                 }
                 return all;
             }
 
-            private BenchmarkResult runOne(QueryPattern pat, int size) {
+            private RunRecord runOne(QueryPattern pat, int size) {
                 publish("[ RUN ]  " + pat.getDescription() + "  (size=" + size + ")");
                 try {
                     Object[] gen = DatabaseGenerator.generate(pat, size);
@@ -366,7 +374,7 @@ public class BenchmarkGUI extends JFrame {
                     publish("[  OK ]  " + String.format("%.3f ms", r.getExecutionTimeMillis() / 1000.0)
                         + "  |  " + r.getResultSize() + " tuples  |  " +
                         String.format("%.2f MB", r.getMemoryUsedMB()));
-                    return r;
+                    return new RunRecord(r, rels);
                 } catch (Exception ex) {
                     publish("[ ERR ]  " + ex.getMessage());
                     return null;
@@ -384,8 +392,9 @@ public class BenchmarkGUI extends JFrame {
                 progressBar.setIndeterminate(false);
                 runBtn.setEnabled(true);
                 try {
-                    List<BenchmarkResult> results = get();
-                    for (BenchmarkResult r : results) {
+                    List<RunRecord> results = get();
+                    for (RunRecord rec : results) {
+                        BenchmarkResult r = rec.result;
                         tableModel.addRow(new Object[]{
                             r.getQueryPattern(),
                             r.getDatabaseSize(),
@@ -394,6 +403,7 @@ public class BenchmarkGUI extends JFrame {
                             String.format("%.2f", r.getAgmBound()),
                             String.format("%.2f", r.getMemoryUsedMB())
                         });
+                        storedRelations.add(rec.relations);
                     }
                     logArea.append("── Done: " + results.size() + " result(s) ──\n\n");
                     setStatus("Done — " + results.size() + " result(s).", OK_COLOR);
@@ -403,6 +413,19 @@ public class BenchmarkGUI extends JFrame {
             }
         };
         worker.execute();
+    }
+
+    // ── Inspection ─────────────────────────────────────────────────────────────
+    private void showInspection(Map<String, Relation> relations) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append("INSPECTION  —  ").append(relations.size()).append(" relation(s)\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+        for (Relation rel : relations.values()) {
+            sb.append(rel.toTableString()).append("\n\n");
+        }
+        logArea.setText(sb.toString());
+        logArea.setCaretPosition(0);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -563,6 +586,16 @@ public class BenchmarkGUI extends JFrame {
         @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) {
             g.setColor(trackColor);
             g.fillRect(r.x, r.y, r.width, r.height);
+        }
+    }
+
+    // ── RunRecord — pairs a result with its input relations ─────────────────────
+    private static class RunRecord {
+        final BenchmarkResult       result;
+        final Map<String, Relation> relations;
+        RunRecord(BenchmarkResult result, Map<String, Relation> relations) {
+            this.result    = result;
+            this.relations = relations;
         }
     }
 

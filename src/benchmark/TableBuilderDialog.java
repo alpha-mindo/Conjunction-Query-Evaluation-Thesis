@@ -237,15 +237,18 @@ public class TableBuilderDialog extends JDialog {
         logScroll.getViewport().setBackground(logArea.getBackground());
         JPanel logCard = card("Output", logScroll);
 
-        JButton runBtn   = bigGreenBtn("▶  Run WCOJ on Custom Tables");
-        JButton clearLog = tealBtn("Clear Log");
-        runBtn  .addActionListener(e -> runWCOJ());
-        clearLog.addActionListener(e -> logArea.setText(""));
+        JButton runBtn    = bigGreenBtn("▶  Run WCOJ on Custom Tables");
+        JButton inspectBtn = tealBtn("🔍 Inspect All Relations");
+        JButton clearLog  = tealBtn("Clear Log");
+        runBtn    .addActionListener(e -> runWCOJ());
+        inspectBtn.addActionListener(e -> inspectAllRelations());
+        clearLog  .addActionListener(e -> logArea.setText(""));
 
         JPanel btnBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         btnBar.setBackground(HDR_BG);
         btnBar.setBorder(new MatteBorder(1, 0, 0, 0, BORDER_COL));
         btnBar.add(runBtn);
+        btnBar.add(inspectBtn);
         btnBar.add(clearLog);
 
         panel.add(logCard, BorderLayout.CENTER);
@@ -436,6 +439,42 @@ public class TableBuilderDialog extends JDialog {
         if (selected != null) loadGridFromData(selected);
         status("Filled " + schemas.size() + " relation(s) with preset #" + presetIndex
                + " (" + rowCount + " rows each).", OK_COLOR);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  LOGIC — Inspect all relations (rendered tables in log)
+    // ══════════════════════════════════════════════════════════════════════════
+    private void inspectAllRelations() {
+        // Flush current grid edits
+        if (selected != null && grid.isEditing()) grid.getCellEditor().stopCellEditing();
+        if (selected != null) saveGridToData(selected);
+
+        if (schemas.isEmpty()) { status("No relations defined yet.", WARN_COLOR); return; }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append("INSPECTION  —  ").append(schemas.size()).append(" relation(s) defined\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+
+        for (Map.Entry<String, List<String>> entry : schemas.entrySet()) {
+            String relName = entry.getKey();
+            List<String> cols = entry.getValue();
+            List<List<String>> rows = data.getOrDefault(relName, Collections.emptyList());
+
+            // Build a temporary Relation so we can reuse toTableString()
+            Relation rel = new Relation(relName, cols);
+            for (List<String> row : rows) {
+                Object[] vals = new Object[cols.size()];
+                for (int i = 0; i < cols.size(); i++)
+                    vals[i] = i < row.size() ? row.get(i) : "";
+                rel.addRow(vals);
+            }
+            sb.append(rel.toTableString()).append("\n\n");
+        }
+
+        logArea.setText(sb.toString());
+        logArea.setCaretPosition(0);
+        status("Showing " + schemas.size() + " relation(s) in log.", OK_COLOR);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
