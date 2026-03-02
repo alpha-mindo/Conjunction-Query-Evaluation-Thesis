@@ -184,6 +184,18 @@ public class BenchmarkGUI extends JFrame {
         clrRow.add(clearBtn);
         side.add(clrRow);
 
+        side.add(Box.createVerticalStrut(24));
+        side.add(sectionLabel("CUSTOM TABLES"));
+        side.add(Box.createVerticalStrut(10));
+
+        JButton customBtn = sideRunButton("⊞  Custom Table Builder");
+        customBtn.addActionListener(e -> new TableBuilderDialog(this).setVisible(true));
+        JPanel customRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
+        customRow.setOpaque(false);
+        customRow.setMaximumSize(new Dimension(240, 44));
+        customRow.add(customBtn);
+        side.add(customRow);
+
         side.add(Box.createVerticalGlue());
         return side;
     }
