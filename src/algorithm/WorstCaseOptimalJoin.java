@@ -114,14 +114,8 @@ public class WorstCaseOptimalJoin {
             Relation rel = relations.get(node.getLabel());
             Set<Tuple> D = new HashSet<>();
             if (rel != null) {
-                // Stamp attribute maps so projectOn / join work correctly
-                Map<String, Integer> attrMap = new HashMap<>();
-                List<String> schema = rel.getSchema();
-                for (int i = 0; i < schema.size(); i++) attrMap.put(schema.get(i), i);
-                for (Tuple t : rel.getTuples()) {
-                    if (t.getAttributeMap().isEmpty()) t.setAttributeMap(attrMap);
-                    D.add(t);
-                }
+                // Relation.addTuple() already stamps the attributeMap; just copy rows into D
+                D.addAll(rel.getTuples());
             }
             return new Result(new HashSet<>(), D);
         }

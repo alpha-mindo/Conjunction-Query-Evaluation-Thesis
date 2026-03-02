@@ -1,15 +1,46 @@
 package benchmark;
 
 import database.Relation;
-import database.Tuple;
+import tree.QueryTreeBuilder;
 import tree.TreeNode;
 import java.util.*;
 
 /**
  * Generates test databases and query trees for benchmarking.
+ * All cell values are random single characters derived from ASCII codes:
+ *   value = (char)('a' + rng.nextInt(domain))
+ * where domain is sized so join columns across relations share enough
+ * common values to produce non-trivial join results.
  */
 public class DatabaseGenerator {
-    
+
+    private static final Random RNG = new Random();
+
+    /**
+     * Returns a random lowercase letter from a domain of {@code domain} values
+     * (ASCII 'a' through 'a' + domain - 1).  Domain is capped at 26.
+     */
+    private static String rc(int domain) {
+        int d = Math.max(1, Math.min(domain, 26));
+        return String.valueOf((char)('a' + RNG.nextInt(d)));
+    }
+
+    /**
+     * Builds a pre-filled String[] pool of {@code domain} random chars so that
+     * join columns can be picked from the same pool (guaranteeing overlap).
+     */
+    private static String[] pool(int domain) {
+        int d = Math.max(1, Math.min(domain, 26));
+        String[] p = new String[d];
+        for (int i = 0; i < d; i++) p[i] = String.valueOf((char)('a' + i));
+        // Shuffle for extra randomness
+        for (int i = d - 1; i > 0; i--) {
+            int j = RNG.nextInt(i + 1);
+            String tmp = p[i]; p[i] = p[j]; p[j] = tmp;
+        }
+        return p;
+    }
+
     /**
      * Generate a database and query tree for a specific pattern.
      * @param pattern The query pattern to generate.
@@ -18,195 +49,144 @@ public class DatabaseGenerator {
      */
     public static Object[] generate(QueryPattern pattern, int size) {
         switch (pattern) {
-            case TWO_WAY:
-                return generateTwoWayJoin(size);
-            case LINEAR:
-                return generateLinearChain(size);
-            case CYCLIC:
-                return generateCyclicQuery(size);
-            case STAR:
-                return generateStarQuery(size);
-            case FOUR_WAY_LINEAR:
-                return generateFourWayLinear(size);
-            case CROSS_PRODUCT:
-                return generateCrossProduct(size);
-            default:
-                return generateTwoWayJoin(size);
+            case TWO_WAY:       return generateTwoWayJoin(size);
+            case LINEAR:        return generateLinearChain(size);
+            case CYCLIC:        return generateCyclicQuery(size);
+            case STAR:          return generateStarQuery(size);
+            case FOUR_WAY_LINEAR: return generateFourWayLinear(size);
+            case CROSS_PRODUCT: return generateCrossProduct(size);
+            default:            return generateTwoWayJoin(size);
         }
     }
-    
+
     // R(A,B) ⋈ S(B,C)
     private static Object[] generateTwoWayJoin(int size) {
         Map<String, Relation> relations = new HashMap<>();
-        
+        // B is shared — pick from a bounded pool so joins produce results
+        String[] bPool = pool(Math.max(2, size / 2));
+
         Relation R = new Relation("R", Arrays.asList("A", "B"));
         Relation S = new Relation("S", Arrays.asList("B", "C"));
-        
         for (int i = 0; i < size; i++) {
-            R.addTuple(new Tuple("a" + i, "b" + (i % (size / 2))));
-            S.addTuple(new Tuple("b" + (i % (size / 2)), "c" + i));
+            R.addRow(rc(26), bPool[RNG.nextInt(bPool.length)]);
+            S.addRow(bPool[RNG.nextInt(bPool.length)], rc(26));
         }
-        
         relations.put("R", R);
         relations.put("S", S);
-        
-        TreeNode root = new TreeNode("root");
-        root.setLeft(new TreeNode("R"));
-        root.setRight(new TreeNode("S"));
-        
+
+        TreeNode root = QueryTreeBuilder.build(relations);
         return new Object[] { relations, root };
     }
-    
+
     // R(A,B) ⋈ S(B,C) ⋈ T(C,D)
     private static Object[] generateLinearChain(int size) {
         Map<String, Relation> relations = new HashMap<>();
-        
+        String[] bPool = pool(Math.max(2, size / 2));
+        String[] cPool = pool(Math.max(2, size / 3));
+
         Relation R = new Relation("R", Arrays.asList("A", "B"));
         Relation S = new Relation("S", Arrays.asList("B", "C"));
         Relation T = new Relation("T", Arrays.asList("C", "D"));
-        
-        int halfSize = size / 2;
-        int thirdSize = size / 3;
-        
         for (int i = 0; i < size; i++) {
-            R.addTuple(new Tuple("a" + i, "b" + (i % halfSize)));
-            S.addTuple(new Tuple("b" + (i % halfSize), "c" + (i % thirdSize)));
-            T.addTuple(new Tuple("c" + (i % thirdSize), "d" + i));
+            R.addRow(rc(26), bPool[RNG.nextInt(bPool.length)]);
+            S.addRow(bPool[RNG.nextInt(bPool.length)], cPool[RNG.nextInt(cPool.length)]);
+            T.addRow(cPool[RNG.nextInt(cPool.length)], rc(26));
         }
-        
         relations.put("R", R);
         relations.put("S", S);
         relations.put("T", T);
-        
-        TreeNode root = new TreeNode("root");
-        TreeNode internal = new TreeNode("internal");
-        root.setLeft(internal);
-        root.setRight(new TreeNode("T"));
-        internal.setLeft(new TreeNode("R"));
-        internal.setRight(new TreeNode("S"));
-        
+
+        TreeNode root = QueryTreeBuilder.build(relations);
         return new Object[] { relations, root };
     }
-    
+
     // Triangle: R(A,B) ⋈ S(B,C) ⋈ T(C,A)
     private static Object[] generateCyclicQuery(int size) {
         Map<String, Relation> relations = new HashMap<>();
-        
+        int domainSize = Math.max(2, Math.min(size, 26));
+        String[] aPool = pool(domainSize);
+        String[] bPool = pool(domainSize);
+        String[] cPool = pool(domainSize);
+
         Relation R = new Relation("R", Arrays.asList("A", "B"));
         Relation S = new Relation("S", Arrays.asList("B", "C"));
         Relation T = new Relation("T", Arrays.asList("C", "A"));
-        
-        int cycleSize = Math.min(size, 100); // Limit cycle size to avoid huge results
-        
         for (int i = 0; i < size; i++) {
-            R.addTuple(new Tuple("a" + (i % cycleSize), "b" + (i % cycleSize)));
-            S.addTuple(new Tuple("b" + (i % cycleSize), "c" + (i % cycleSize)));
-            T.addTuple(new Tuple("c" + (i % cycleSize), "a" + (i % cycleSize)));
+            R.addRow(aPool[RNG.nextInt(aPool.length)], bPool[RNG.nextInt(bPool.length)]);
+            S.addRow(bPool[RNG.nextInt(bPool.length)], cPool[RNG.nextInt(cPool.length)]);
+            T.addRow(cPool[RNG.nextInt(cPool.length)], aPool[RNG.nextInt(aPool.length)]);
         }
-        
         relations.put("R", R);
         relations.put("S", S);
         relations.put("T", T);
-        
-        TreeNode root = new TreeNode("root");
-        TreeNode internal = new TreeNode("internal");
-        root.setLeft(internal);
-        root.setRight(new TreeNode("T"));
-        internal.setLeft(new TreeNode("R"));
-        internal.setRight(new TreeNode("S"));
-        
+
+        TreeNode root = QueryTreeBuilder.build(relations);
         return new Object[] { relations, root };
     }
-    
+
     // Star: R(A,B) ⋈ S(A,C) ⋈ T(A,D)
     private static Object[] generateStarQuery(int size) {
         Map<String, Relation> relations = new HashMap<>();
-        
+        // Small centre domain → more join hits
+        String[] aPool = pool(Math.max(2, Math.min(size / 10, 26)));
+
         Relation R = new Relation("R", Arrays.asList("A", "B"));
         Relation S = new Relation("S", Arrays.asList("A", "C"));
         Relation T = new Relation("T", Arrays.asList("A", "D"));
-        
-        int centerSize = Math.min(size / 10, 50); // Central join attribute has fewer values
-        
         for (int i = 0; i < size; i++) {
-            R.addTuple(new Tuple("a" + (i % centerSize), "b" + i));
-            S.addTuple(new Tuple("a" + (i % centerSize), "c" + i));
-            T.addTuple(new Tuple("a" + (i % centerSize), "d" + i));
+            R.addRow(aPool[RNG.nextInt(aPool.length)], rc(26));
+            S.addRow(aPool[RNG.nextInt(aPool.length)], rc(26));
+            T.addRow(aPool[RNG.nextInt(aPool.length)], rc(26));
         }
-        
         relations.put("R", R);
         relations.put("S", S);
         relations.put("T", T);
-        
-        TreeNode root = new TreeNode("root");
-        TreeNode internal = new TreeNode("internal");
-        root.setLeft(internal);
-        root.setRight(new TreeNode("T"));
-        internal.setLeft(new TreeNode("R"));
-        internal.setRight(new TreeNode("S"));
-        
+
+        TreeNode root = QueryTreeBuilder.build(relations);
         return new Object[] { relations, root };
     }
-    
+
     // R(A,B) ⋈ S(B,C) ⋈ T(C,D) ⋈ U(D,E)
     private static Object[] generateFourWayLinear(int size) {
         Map<String, Relation> relations = new HashMap<>();
-        
+        String[] bPool = pool(Math.max(2, size / 2));
+        String[] cPool = pool(Math.max(2, size / 3));
+        String[] dPool = pool(Math.max(2, size / 4));
+
         Relation R = new Relation("R", Arrays.asList("A", "B"));
         Relation S = new Relation("S", Arrays.asList("B", "C"));
         Relation T = new Relation("T", Arrays.asList("C", "D"));
         Relation U = new Relation("U", Arrays.asList("D", "E"));
-        
-        int halfSize = size / 2;
-        int thirdSize = size / 3;
-        int quarterSize = size / 4;
-        
         for (int i = 0; i < size; i++) {
-            R.addTuple(new Tuple("a" + i, "b" + (i % halfSize)));
-            S.addTuple(new Tuple("b" + (i % halfSize), "c" + (i % thirdSize)));
-            T.addTuple(new Tuple("c" + (i % thirdSize), "d" + (i % quarterSize)));
-            U.addTuple(new Tuple("d" + (i % quarterSize), "e" + i));
+            R.addRow(rc(26), bPool[RNG.nextInt(bPool.length)]);
+            S.addRow(bPool[RNG.nextInt(bPool.length)], cPool[RNG.nextInt(cPool.length)]);
+            T.addRow(cPool[RNG.nextInt(cPool.length)], dPool[RNG.nextInt(dPool.length)]);
+            U.addRow(dPool[RNG.nextInt(dPool.length)], rc(26));
         }
-        
         relations.put("R", R);
         relations.put("S", S);
         relations.put("T", T);
         relations.put("U", U);
-        
-        TreeNode root = new TreeNode("root");
-        TreeNode internal1 = new TreeNode("internal1");
-        TreeNode internal2 = new TreeNode("internal2");
-        root.setLeft(internal1);
-        root.setRight(new TreeNode("U"));
-        internal1.setLeft(internal2);
-        internal1.setRight(new TreeNode("T"));
-        internal2.setLeft(new TreeNode("R"));
-        internal2.setRight(new TreeNode("S"));
-        
+
+        TreeNode root = QueryTreeBuilder.build(relations);
         return new Object[] { relations, root };
     }
-    
-    // R(A) × S(B) - Cross product with no common attributes
+
+    // R(A) × S(B) — cross product, no common attributes
     private static Object[] generateCrossProduct(int size) {
         Map<String, Relation> relations = new HashMap<>();
-        
+        int smallSize = Math.min(size, 26); // cap so the cross product stays printable
+
         Relation R = new Relation("R", Arrays.asList("A"));
         Relation S = new Relation("S", Arrays.asList("B"));
-        
-        int smallSize = Math.min(size, 50); // Limit cross product size
-        
         for (int i = 0; i < smallSize; i++) {
-            R.addTuple(new Tuple("a" + i));
-            S.addTuple(new Tuple("b" + i));
+            R.addRow(rc(26));
+            S.addRow(rc(26));
         }
-        
         relations.put("R", R);
         relations.put("S", S);
-        
-        TreeNode root = new TreeNode("root");
-        root.setLeft(new TreeNode("R"));
-        root.setRight(new TreeNode("S"));
-        
+
+        TreeNode root = QueryTreeBuilder.build(relations);
         return new Object[] { relations, root };
     }
 }
