@@ -159,6 +159,7 @@ public class BenchmarkGUI extends JFrame {
         nameStack.add(appSub);
         appBlock.add(nameStack);
         appBlock.setMaximumSize(new Dimension(240, 100));
+        appBlock.setAlignmentX(Component.LEFT_ALIGNMENT);
         side.add(appBlock);
 
         side.add(Box.createVerticalStrut(16));
@@ -172,6 +173,7 @@ public class BenchmarkGUI extends JFrame {
         JPanel cbRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
         cbRow.setOpaque(false);
         cbRow.setMaximumSize(new Dimension(240, 30));
+        cbRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         cbRow.add(allPatternsBox);
         side.add(cbRow);
 
@@ -182,6 +184,7 @@ public class BenchmarkGUI extends JFrame {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
         btnRow.setOpaque(false);
         btnRow.setMaximumSize(new Dimension(240, 44));
+        btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnRow.add(runBtn);
         side.add(btnRow);
 
@@ -189,6 +192,7 @@ public class BenchmarkGUI extends JFrame {
         JPanel clrRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
         clrRow.setOpaque(false);
         clrRow.setMaximumSize(new Dimension(240, 36));
+        clrRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         clrRow.add(clearBtn);
         side.add(clrRow);
 
@@ -201,6 +205,7 @@ public class BenchmarkGUI extends JFrame {
         JPanel customRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
         customRow.setOpaque(false);
         customRow.setMaximumSize(new Dimension(240, 44));
+        customRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         customRow.add(customBtn);
         side.add(customRow);
 
@@ -472,6 +477,7 @@ public class BenchmarkGUI extends JFrame {
         JPanel row = new JPanel(new BorderLayout(0, 4));
         row.setOpaque(false);
         row.setMaximumSize(new Dimension(240, 58));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setBorder(new EmptyBorder(0, 20, 0, 20));
         JLabel lbl = new JLabel(labelText);
         lbl.setFont(FONT_SMALL);

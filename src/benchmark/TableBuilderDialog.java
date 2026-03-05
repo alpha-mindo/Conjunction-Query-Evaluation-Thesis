@@ -8,9 +8,12 @@ import tree.TreeNode;
 
 import javax.swing.*;
 import javax.swing.border.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 
@@ -170,11 +173,13 @@ public class TableBuilderDialog extends JDialog {
         // ── Row buttons + fill presets ────────────────────────────────────────
         JButton addRowBtn = tealBtn("+ Add Row");
         JButton delRowBtn = tealBtn("− Delete Row");
-        JButton clearBtn  = tealBtn("Clear All");
+        JButton clearBtn = tealBtn("Clear All");
+        JButton importCsvBtn = tealBtn("⬆ Import CSV");
 
         addRowBtn.addActionListener(e -> addRow());
         delRowBtn.addActionListener(e -> deleteRow());
-        clearBtn .addActionListener(e -> clearRows());
+        clearBtn.addActionListener(e -> clearRows());
+        importCsvBtn.addActionListener(e -> importCSV());
 
         String[] presets = {
             "── Fill Preset ──",
@@ -203,7 +208,9 @@ public class TableBuilderDialog extends JDialog {
         rowBar.setBackground(HDR_BG);
         rowBar.setBorder(new MatteBorder(1, 0, 0, 0, BORDER_COL));
         rowBar.add(addRowBtn); rowBar.add(delRowBtn); rowBar.add(clearBtn);
-        rowBar.add(Box.createHorizontalStrut(20));
+        rowBar.add(Box.createHorizontalStrut(8));
+        rowBar.add(importCsvBtn);
+        rowBar.add(Box.createHorizontalStrut(12));
         rowBar.add(new JLabel("Rows:"));
         rowBar.add(rowCountField);
         rowBar.add(presetBox);
@@ -361,6 +368,112 @@ public class TableBuilderDialog extends JDialog {
         if (selected == null) return;
         gridModel.setRowCount(0);
         data.get(selected).clear();
+    }
+
+    /**
+     * Opens a file chooser to pick a CSV file and imports it into the currently
+     * selected relation (or creates a new one if none is selected).
+     * The first CSV row is treated as column headers; subsequent rows are data.
+     */
+    private void importCSV() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Import CSV");
+        chooser.setFileFilter(new FileNameExtensionFilter("CSV files (*.csv)", "csv"));
+        chooser.setAcceptAllFileFilterUsed(true);
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File file = chooser.getSelectedFile();
+        List<String[]> rawRows = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                rawRows.add(parseCsvLine(line));
+            }
+        } catch (IOException ex) {
+            status("CSV read error: " + ex.getMessage(), ERR_COLOR);
+            return;
+        }
+
+        if (rawRows.isEmpty()) { status("CSV file is empty.", WARN_COLOR); return; }
+
+        // First row = column names
+        String[] headerArr = rawRows.get(0);
+        List<String> cols = new ArrayList<>();
+        for (String h : headerArr) {
+            String col = h.trim().toUpperCase();
+            if (!col.isEmpty()) cols.add(col);
+        }
+        if (cols.isEmpty()) { status("CSV has no valid column headers.", ERR_COLOR); return; }
+
+        // Determine target relation: use selected or create a new one
+        if (selected == null) {
+            String base = "R";
+            int n = 1;
+            while (schemas.containsKey(base + n)) n++;
+            String name = base + n;
+            schemas.put(name, new ArrayList<>());
+            data   .put(name, new ArrayList<>());
+            listModel.addElement(name);
+            relList.setSelectedValue(name, true);
+            selected = name;
+        }
+
+        // Apply columns (this resets rows)
+        schemas.put(selected, cols);
+        nameField.setText(selected);
+        colsField.setText(String.join(", ", cols));
+
+        // Import data rows
+        List<List<String>> rows = new ArrayList<>();
+        for (int i = 1; i < rawRows.size(); i++) {
+            String[] rawRow = rawRows.get(i);
+            List<String> row = new ArrayList<>();
+            for (int c = 0; c < cols.size(); c++) {
+                row.add(c < rawRow.length ? rawRow[c].trim() : "");
+            }
+            rows.add(row);
+        }
+        data.put(selected, rows);
+        loadGridFromData(selected);
+        status("Imported " + rows.size() + " row(s) from " + file.getName()
+               + " into " + selected + ".", OK_COLOR);
+    }
+
+    /**
+     * Minimal RFC-4180-style CSV line parser that handles quoted fields
+     * (including quoted fields containing commas and escaped quotes "").
+     */
+    private String[] parseCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        sb.append('"'); i++; // escaped quote
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    sb.append(c);
+                }
+            } else {
+                if (c == '"') {
+                    inQuotes = true;
+                } else if (c == ',') {
+                    fields.add(sb.toString());
+                    sb.setLength(0);
+                } else {
+                    sb.append(c);
+                }
+            }
+        }
+        fields.add(sb.toString());
+        return fields.toArray(new String[0]);
     }
 
     /**
