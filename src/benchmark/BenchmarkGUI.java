@@ -209,6 +209,16 @@ public class BenchmarkGUI extends JFrame {
         customRow.add(customBtn);
         side.add(customRow);
 
+        side.add(Box.createVerticalStrut(8));
+        JButton vizBtn = sideRunButton("▶  Algorithm Visualizer");
+        vizBtn.addActionListener(e -> launchVisualizer());
+        JPanel vizRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
+        vizRow.setOpaque(false);
+        vizRow.setMaximumSize(new Dimension(240, 44));
+        vizRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        vizRow.add(vizBtn);
+        side.add(vizRow);
+
         side.add(Box.createVerticalGlue());
         return side;
     }
@@ -431,6 +441,16 @@ public class BenchmarkGUI extends JFrame {
         }
         logArea.setText(sb.toString());
         logArea.setCaretPosition(0);
+    }
+
+    private void launchVisualizer() {
+        int sel = resultTable.getSelectedRow();
+        if (sel < 0 || sel >= storedRelations.size()) {
+            JOptionPane.showMessageDialog(this, "Please select a benchmark result first.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Map<String, Relation> relations = storedRelations.get(sel);
+        new visualization.VisualizationGUI(this, relations).setVisible(true);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

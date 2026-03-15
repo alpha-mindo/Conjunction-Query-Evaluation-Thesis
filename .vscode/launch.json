@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "VisualizationLauncher",
+            "request": "launch",
+            "mainClass": "visualization.VisualizationLauncher",
+            "projectName": "Conjunction-Query-Evaluation-Thesis_f70c3d7c"
+        },
+        {
+            "type": "java",
             "name": "BenchmarkGUILauncher",
             "request": "launch",
             "mainClass": "benchmark.BenchmarkGUILauncher",

@@ -11,7 +11,8 @@
                 "${workspaceFolder}\\src\\database\\*.java",
                 "${workspaceFolder}\\src\\tree\\*.java",
                 "${workspaceFolder}\\src\\algorithm\\*.java",
-                "${workspaceFolder}\\src\\benchmark\\*.java"
+                "${workspaceFolder}\\src\\benchmark\\*.java",
+                "${workspaceFolder}\\src\\visualization\\*.java"
             ],
             "group": {
                 "kind": "build",
