@@ -1,24 +1,24 @@
 package benchmark;
 
-import algorithm.WorstCaseOptimalJoin;
+import Algorithms.LoomisWhitneyInstance;
 import database.Relation;
 import database.Tuple;
 import tree.TreeNode;
 import java.util.*;
 
 /**
- * Wrapper for Worst-Case Optimal Join algorithm for benchmarking.
+ * Wrapper for Loomis-Whitney Join algorithm for benchmarking.
  */
 public class WCOJAlgorithm implements JoinAlgorithm {
-    
+
     @Override
     public Set<Tuple> execute(Map<String, Relation> relations, TreeNode queryTree) {
-        WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, queryTree);
+        LoomisWhitneyInstance wcoj = new LoomisWhitneyInstance(relations, queryTree);
         return wcoj.execute();
     }
-    
+
     @Override
     public String getName() {
-        return "Worst-Case Optimal Join";
+        return "Loomis-Whitney Algorithm";
     }
 }

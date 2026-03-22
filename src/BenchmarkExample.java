@@ -24,7 +24,7 @@ public class BenchmarkExample {
         
         // Time the algorithm
         long startTime = System.nanoTime();
-        algorithm.WorstCaseOptimalJoin wcoj = new algorithm.WorstCaseOptimalJoin(relations, tree);
+        Algorithms.LoomisWhitneyInstance wcoj = new Algorithms.LoomisWhitneyInstance(relations, tree);
         Set<Tuple> results = wcoj.execute();
         long endTime = System.nanoTime();
         
@@ -46,7 +46,7 @@ public class BenchmarkExample {
             TreeNode t = (TreeNode) gen[1];
             
             startTime = System.nanoTime();
-            wcoj = new algorithm.WorstCaseOptimalJoin(rels, t);
+            wcoj = new Algorithms.LoomisWhitneyInstance(rels, t);
             results = wcoj.execute();
             endTime = System.nanoTime();
             

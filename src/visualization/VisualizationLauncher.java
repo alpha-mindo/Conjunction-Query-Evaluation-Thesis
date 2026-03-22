@@ -41,7 +41,13 @@ public class VisualizationLauncher {
 
             // Open visualizer
             VisualizationGUI viz = new VisualizationGUI(parent, relations);
-            viz.setDefaultCloseOperation(javax.swing.JDialog.EXIT_ON_CLOSE);
+            viz.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
+            viz.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosed(java.awt.event.WindowEvent e) {
+                    System.exit(0);
+                }
+            });
             viz.setVisible(true);
         });
     }

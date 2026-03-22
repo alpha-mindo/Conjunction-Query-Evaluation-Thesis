@@ -15,8 +15,8 @@ A Java implementation of the **Loomis-Whitney skew-aware Worst-Case Optimal Join
 │   │   ├── TreeNode.java               # Binary join-tree node
 │   │   └── Result.java                 # C / D result-set container
 │   │
-│   ├── algorithm/
-│   │   └── WorstCaseOptimalJoin.java   # Loomis-Whitney WCOJ implementation
+│   ├── Algorithms/
+│   │   └── LoomisWhitneyInstance.java   # Loomis-Whitney implementation
 │   │
 │   ├── benchmark/
 │   │   ├── BenchmarkRunner.java        # CLI benchmark entry point
@@ -43,7 +43,7 @@ A Java implementation of the **Loomis-Whitney skew-aware Worst-Case Optimal Join
 
 ### Worst-Case Optimal Join (WCOJ) — Loomis-Whitney skew-aware
 **Status**: ✅ Implemented  
-**File**: `src/algorithm/WorstCaseOptimalJoin.java`  
+**File**: `src/Algorithms/LoomisWhitneyInstance.java`  
 **Complexity**: O(N · IN^ρ* + OUT) — worst-case optimal in the AGM sense  
 **Best For**: Cyclic queries, star queries, multi-way joins with potential intermediate blowup
 
@@ -60,7 +60,7 @@ The algorithm recursively processes a binary join tree, partitioning join-key va
 - **`Result`** — wraps two sets: **C** (complete, materialized results) and **D** (fully-joined but deferred results)
 
 ### `algorithm` package
-- **`WorstCaseOptimalJoin`** — core WCOJ implementation; exposes `execute()` and `getSizeBound()` (fractional-edge-cover AGM bound)
+- **`LoomisWhitneyInstance`** — core WCOJ implementation; exposes `execute()` and `getSizeBound()` (fractional-edge-cover AGM bound)
 
 ### `benchmark` package
 - **`BenchmarkRunner`** — CLI runner; runs warm-up + timed iterations, prints formatted tables
@@ -101,7 +101,7 @@ java -cp bin benchmark.BenchmarkRunner CYCLIC 100
 ### Basic API usage — WCOJ Algorithm
 
 ```java
-import algorithm.WorstCaseOptimalJoin;
+import algorithm.LoomisWhitneyInstance;
 import database.Relation;
 import database.Tuple;
 import tree.TreeNode;
@@ -126,7 +126,7 @@ root.setLeft(new TreeNode("R"));
 root.setRight(new TreeNode("S"));
 
 // 3. Execute WCOJ
-WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, root);
+LoomisWhitneyInstance wcoj = new LoomisWhitneyInstance(relations, root);
 Set<Tuple> results = wcoj.execute();
 System.out.println("AGM bound: " + wcoj.getSizeBound());
 
@@ -247,7 +247,7 @@ Worst-case optimal join algorithms guarantee that the **total work is bounded by
 
 ## 📝 Documentation
 
-- **Algorithm Details**: [WorstCaseOptimalJoin-Documentation.md](WorstCaseOptimalJoin-Documentation.md) - Detailed WCOJ documentation
+- **Algorithm Details**: [LoomisWhitneyInstance-Documentation.md](LoomisWhitneyInstance-Documentation.md) - Detailed WCOJ documentation
 - **Inline Documentation**: Comprehensive JavaDoc throughout codebase
 - **Examples**: Working examples in `Main.java`
 - **This README**: High-level overview and comparison

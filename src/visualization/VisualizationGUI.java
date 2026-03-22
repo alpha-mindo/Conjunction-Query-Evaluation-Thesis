@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Swing GUI for visualizing WCOJ algorithm execution.
+ * Swing GUI for visualizing Loomis-Whitney algorithm execution.
  * Shows F, G, F\G, C, D tables at each recursive step with narrative explanation.
  */
 public class VisualizationGUI extends JDialog {
     private final Map<String, database.Relation> relations;
-    private final TracingWCOJ tracer;
+    private final TracingLoomisWhitney tracer;
     private final List<AlgorithmStep> steps;
     private int currentStep = 0;
 
@@ -34,9 +34,9 @@ public class VisualizationGUI extends JDialog {
     private Timer autoPlayTimer;
 
     public VisualizationGUI(Frame owner, Map<String, database.Relation> rels) {
-        super(owner, "WCOJ Algorithm Visualizer", false);
+        super(owner, "Loomis-Whitney Algorithm Visualizer", false);
         this.relations = rels;
-        this.tracer = new TracingWCOJ(rels);
+        this.tracer = new TracingLoomisWhitney(rels);
         
         setSize(1400, 850);
         setMinimumSize(new Dimension(1000, 600));

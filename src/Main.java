@@ -1,4 +1,4 @@
-import algorithm.WorstCaseOptimalJoin;
+import Algorithms.LoomisWhitneyInstance;
 import database.Relation;
 import database.Tuple;
 import tree.QueryTreeBuilder;
@@ -50,10 +50,10 @@ public class Main {
         TreeNode root = QueryTreeBuilder.build(relations);
         System.out.println("\nQuery tree: " + root.getLabel());
 
-        WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, root);
-        System.out.println("\nAGM Size Bound: " + wcoj.getSizeBound());
+        LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations, root);  
+        System.out.println("\nSize Bound: " + lw.getSizeBound());
 
-        Set<Tuple> results = wcoj.execute();
+        Set<Tuple> results = lw.execute();
         System.out.println("\nResult — R ⋈ S (" + results.size() + " rows):");
         printResultTable(results, Arrays.asList("A", "B", "C"));
     }
@@ -88,10 +88,10 @@ public class Main {
         TreeNode root = QueryTreeBuilder.build(relations);
         System.out.println("\nQuery tree: " + root.getLabel());
 
-        WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, root);
-        System.out.println("\nAGM Size Bound: " + wcoj.getSizeBound());
+        LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations, root);  
+        System.out.println("\nSize Bound: " + lw.getSizeBound());
 
-        Set<Tuple> results = wcoj.execute();
+        Set<Tuple> results = lw.execute();
         System.out.println("\nResult — R ⋈ S ⋈ T (" + results.size() + " rows):");
         printResultTable(results, Arrays.asList("A", "B", "C"));
     }

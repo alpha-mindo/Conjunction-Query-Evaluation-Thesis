@@ -9,14 +9,14 @@ import tree.TreeNode;
 import java.util.*;
 
 /**
- * Instrumented version of {@link algorithm.WorstCaseOptimalJoin} that records
+ * Instrumented version of {@link Algorithms.LoomisWhitneyInstance} that records
  * an {@link AlgorithmStep} for every recursive call so the visualizer can
  * replay the execution step by step.
  *
  * The algorithmic logic is identical to the original WCOJ; only tracing
  * instrumentation has been added.
  */
-public class TracingWCOJ {
+public class TracingLoomisWhitney {
 
     private final Map<String, Relation>         relations;
     private final TreeNode                       tree;
@@ -25,7 +25,7 @@ public class TracingWCOJ {
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public TracingWCOJ(Map<String, Relation> relations) {
+    public TracingLoomisWhitney(Map<String, Relation> relations) {
         this.relations = relations;
         this.tree      = QueryTreeBuilder.build(relations);
         computeNodeSchemas(tree);
@@ -185,7 +185,7 @@ public class TracingWCOJ {
         return new Result(C, D);
     }
 
-    // ── Join helpers (mirrors WorstCaseOptimalJoin) ────────────────────────────
+    // ── Join helpers (mirrors LoomisWhitneyInstance) ────────────────────────────
 
     private Set<Tuple> join(Set<Tuple> left, Set<Tuple> right) {
         Set<Tuple> result = new HashSet<>();

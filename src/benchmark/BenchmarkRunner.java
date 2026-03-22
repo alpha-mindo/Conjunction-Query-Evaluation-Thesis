@@ -1,6 +1,6 @@
 package benchmark;
 
-import algorithm.WorstCaseOptimalJoin;
+import Algorithms.LoomisWhitneyInstance;
 import database.Relation;
 import database.Tuple;
 import tree.TreeNode;
@@ -81,8 +81,8 @@ public class BenchmarkRunner {
             Map<String, Relation> relations = (Map<String, Relation>) generated[0];
             TreeNode tree = (TreeNode) generated[1];
             
-            // Test WCOJ algorithm
-            WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, tree);
+            // Test LW algorithm
+            LoomisWhitneyInstance wcoj = new LoomisWhitneyInstance(relations, tree);
             WCOJBenchmarkAdapter adapter = new WCOJBenchmarkAdapter(wcoj);
             
             BenchmarkResult result = runBenchmark(adapter, pattern, size);
@@ -177,23 +177,23 @@ public class BenchmarkRunner {
 }
 
 /**
- * Adapter to wrap WorstCaseOptimalJoin for benchmarking.
+ * Adapter to wrap LoomisWhitneyInstance for benchmarking.
  */
 class WCOJBenchmarkAdapter implements AlgorithmBenchmark {
-    private final WorstCaseOptimalJoin wcoj;
-    
-    public WCOJBenchmarkAdapter(WorstCaseOptimalJoin wcoj) {
+    private final LoomisWhitneyInstance wcoj;
+
+    public WCOJBenchmarkAdapter(LoomisWhitneyInstance wcoj) {
         this.wcoj = wcoj;
     }
-    
+
     @Override
     public Set<Tuple> execute() {
         return wcoj.execute();
     }
-    
+
     @Override
     public String getName() {
-        return "WCOJ";
+        return "Loomis-Whitney";
     }
     
     @Override

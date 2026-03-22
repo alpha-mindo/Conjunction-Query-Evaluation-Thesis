@@ -382,8 +382,8 @@ public class BenchmarkGUI extends JFrame {
                     @SuppressWarnings("unchecked")
                     Map<String, Relation> rels = (Map<String, Relation>) gen[0];
                     TreeNode tree = (TreeNode) gen[1];
-                    algorithm.WorstCaseOptimalJoin wcoj =
-                        new algorithm.WorstCaseOptimalJoin(rels, tree);
+                    Algorithms.LoomisWhitneyInstance wcoj =
+                        new Algorithms.LoomisWhitneyInstance(rels, tree);
                     WCOJBenchmarkAdapter adapter = new WCOJBenchmarkAdapter(wcoj);
                     BenchmarkResult r = BenchmarkRunner.runBenchmark(adapter, pat, size);
                     publish("[  OK ]  " + String.format("%.3f ms", r.getExecutionTimeMillis() / 1000.0)

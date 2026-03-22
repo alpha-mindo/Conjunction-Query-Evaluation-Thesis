@@ -1,6 +1,6 @@
 package benchmark;
 
-import algorithm.WorstCaseOptimalJoin;
+import Algorithms.LoomisWhitneyInstance;
 import database.Relation;
 import database.Tuple;
 import tree.QueryTreeBuilder;
@@ -648,7 +648,7 @@ public class TableBuilderDialog extends JDialog {
                 }
 
                 try {
-                    WorstCaseOptimalJoin wcoj = new WorstCaseOptimalJoin(relations, root);
+                    LoomisWhitneyInstance wcoj = new LoomisWhitneyInstance(relations, root);
                     double agm = wcoj.getSizeBound();
                     publish(String.format("AGM bound  : %.4f%n%n", agm));
 
