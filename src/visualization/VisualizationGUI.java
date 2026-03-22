@@ -12,6 +12,7 @@ import java.util.Map;
  * Shows F, G, F\G, C, D tables at each recursive step with narrative explanation.
  */
 public class VisualizationGUI extends JDialog {
+    @SuppressWarnings("unused")
     private final Map<String, database.Relation> relations;
     private final TracingLoomisWhitney tracer;
     private final List<AlgorithmStep> steps;
