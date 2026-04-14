@@ -34,9 +34,24 @@ public class LoomisWhitneyInstance {
 
     /** Line 3: Run recursive LW(u) */
     public Set<Tuple> execute() {
-        Result res = lw(queryTree);
-        // Line 4: prune C(u) and return
-        return prune(res.getC());
+    Result res = lw(queryTree);
+
+    // Collect all attributes involved in the query
+    List<String> allAttrs = new ArrayList<>(getContextAttributes(queryTree));
+
+    // Build the global set of valid keys: intersection of projections
+    Set<Tuple> validKeys = new HashSet<>();
+        for (Relation rel : relations.values()) {
+            Set<Tuple> proj = project(rel.getTuples(), allAttrs);
+            if (validKeys.isEmpty()) {
+                validKeys.addAll(proj);
+            } else {
+                validKeys.retainAll(proj);
+            }
+        }
+
+        // Prune candidate tuples against valid keys
+        return prune(res.getC(), allAttrs, validKeys);
     }
 
     /** Recursive LW(u) procedure */
@@ -59,8 +74,9 @@ public class LoomisWhitneyInstance {
         Set<Tuple> F = project(D_L, lambda);
         F.retainAll(project(D_R, lambda));
 
-        // threshold = |F| / |D_R|
-        int threshold = Math.max(1, F.size() / Math.max(1, D_R.size()));
+        // threshold = P / |D_R| where P is the AGM bound
+        int p = (int) getSizeBound();
+        int threshold = Math.max(1, p / Math.max(1, D_R.size()));
         Set<Tuple> G = selectTop(F, threshold);
 
         Set<Tuple> C, D;
@@ -73,9 +89,9 @@ public class LoomisWhitneyInstance {
             C = conditionalJoin(D_L, D_R, G, lambda);
             C.addAll(C_L);
             C.addAll(C_R);
-
+ 
             Set<Tuple> lightKeys = new HashSet<>(F);
-            lightKeys.removeAll(G);
+            lightKeys.removeAll(G); //returns a boolean not a set
             D = conditionalJoin(D_L, D_R, lightKeys, lambda);
         }
 
@@ -101,7 +117,7 @@ public class LoomisWhitneyInstance {
         return attrs;
     }
 
-    private Set<Tuple> project(Set<Tuple> tuples, List<String> attrs) {
+    private Set<Tuple> project(Collection<Tuple> tuples, List<String> attrs) {
         Set<Tuple> projected = new HashSet<>();
         if (attrs == null || attrs.isEmpty()) return projected;
         for (Tuple t : tuples) {
@@ -147,7 +163,15 @@ public class LoomisWhitneyInstance {
         return selected;
     }
 
-    private Set<Tuple> prune(Set<Tuple> tuples) {
-        return new HashSet<>(tuples);
+    private Set<Tuple> prune(Set<Tuple> tuples, List<String> separator, Set<Tuple> validKeys) {
+    Set<Tuple> pruned = new HashSet<>();
+    for (Tuple t : tuples) {
+        Tuple key = t.projectOn(separator);
+        if (validKeys.contains(key)) {
+            pruned.add(t);
+        }
     }
+    return pruned;
+}
+
 }

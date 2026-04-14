@@ -42,6 +42,22 @@ public class TracingLoomisWhitney {
         return loomisWhitney(tree).getC();
     }
 
+    private double computeLWBound(int n) {
+        double bound = 1.0;
+        for (Relation rel : relations.values()) {
+            bound *= Math.pow(rel.size(), 1.0 / (n - 1));
+        }
+        return bound;
+    }
+
+    public double getSizeBound() {
+        Set<String> allAttrs = new HashSet<>();
+        for (Relation r : relations.values()) {
+            allAttrs.addAll(r.getColumns());
+        }
+        return computeLWBound(allAttrs.size());
+    }
+
     // ── Schema helpers ─────────────────────────────────────────────────────────
 
     private List<String> computeNodeSchemas(TreeNode node) {
@@ -115,7 +131,7 @@ public class TracingLoomisWhitney {
         Set<Tuple> F = project(D_L, lambda);
         F.retainAll(project(D_R, lambda));
 
-        int P         = Math.max(1, F.size());
+        int P         = (int) getSizeBound();
         int threshold = Math.max(1, P / Math.max(1, D_R.size()));
         Set<Tuple> G         = selectTop(F, threshold);
         Set<Tuple> lightKeys = new HashSet<>(F);
@@ -207,7 +223,7 @@ public class TracingLoomisWhitney {
         return result;
     }
 
-    private Set<Tuple> project(Set<Tuple> tuples, List<String> attrs) {
+    private Set<Tuple> project(Collection<Tuple> tuples, List<String> attrs) {
         Set<Tuple> projected = new HashSet<>();
         if (attrs.isEmpty()) return projected;
         for (Tuple t : tuples) projected.add(t.projectOn(attrs));

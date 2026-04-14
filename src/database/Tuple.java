@@ -119,12 +119,13 @@ public class Tuple {
         if (this == o) return true;
         if (!(o instanceof Tuple)) return false;
         Tuple tuple = (Tuple) o;
-        return Objects.equals(values, tuple.values);
+        return Objects.equals(values, tuple.values) &&
+            Objects.equals(attributeMap, tuple.attributeMap);
     }
-    
+
     @Override
     public int hashCode() {
-        return Objects.hash(values);
+        return Objects.hash(values, attributeMap);
     }
     
     @Override
