@@ -81,9 +81,9 @@ public class BenchmarkRunner {
             Map<String, Relation> relations = (Map<String, Relation>) generated[0];
             TreeNode tree = (TreeNode) generated[1];
             
-            // Test LW algorithm
-            LoomisWhitneyInstance wcoj = new LoomisWhitneyInstance(relations, tree);
-            WCOJBenchmarkAdapter adapter = new WCOJBenchmarkAdapter(wcoj);
+            // Test algorithm
+            Algorithms.LoomisWhitneyInstance wcoj = new Algorithms.LoomisWhitneyInstance(relations, tree);
+            WCOJBenchmarkAdapter adapter = new WCOJBenchmarkAdapter(wcoj, "LoomisWhitneyInstance");
             
             BenchmarkResult result = runBenchmark(adapter, pattern, size);
             results.add(result);
@@ -180,24 +180,45 @@ public class BenchmarkRunner {
  * Adapter to wrap LoomisWhitneyInstance for benchmarking.
  */
 class WCOJBenchmarkAdapter implements AlgorithmBenchmark {
-    private final LoomisWhitneyInstance wcoj;
+    private final Object wcoj;
+    private final String name;
+    private final java.lang.reflect.Method executeMethod;
+    private final java.lang.reflect.Method getSizeBoundMethod;
 
-    public WCOJBenchmarkAdapter(LoomisWhitneyInstance wcoj) {
+    public WCOJBenchmarkAdapter(Object wcoj, String name) {
         this.wcoj = wcoj;
+        this.name = name;
+        try {
+            this.executeMethod = wcoj.getClass().getMethod("execute");
+            this.getSizeBoundMethod = wcoj.getClass().getMethod("getSizeBound");
+        } catch (Exception e) {
+            throw new RuntimeException("Algorithm must have execute() and getSizeBound() methods", e);
+        }
     }
 
     @Override
-    public Set<Tuple> execute() {
-        return wcoj.execute();
+    @SuppressWarnings("unchecked")
+    public java.util.Set<database.Tuple> execute() {
+        try {
+            return (java.util.Set<database.Tuple>) executeMethod.invoke(wcoj);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public String getName() {
-        return "Loomis-Whitney";
+        return name;
     }
-    
+
     @Override
     public double getSizeBound() {
-        return wcoj.getSizeBound();
-    }
+        try {
+            return (double) getSizeBoundMethod.invoke(wcoj);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 }
+}
+
+

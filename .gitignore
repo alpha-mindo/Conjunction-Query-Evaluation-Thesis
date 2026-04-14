@@ -9,3 +9,7 @@ bin/
 
 # VS Code
 .vscode/
+
+# Dependencies
+lib/
+*.jar
