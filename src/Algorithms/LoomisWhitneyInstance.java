@@ -34,24 +34,13 @@ public class LoomisWhitneyInstance {
 
     /** Line 3: Run recursive LW(u) */
     public Set<Tuple> execute() {
-    Result res = lw(queryTree);
+        Result res = lw(queryTree);
 
-    // Collect all attributes involved in the query
-    List<String> allAttrs = new ArrayList<>(getContextAttributes(queryTree));
+        // Collect all attributes involved in the query
+        List<String> allAttrs = new ArrayList<>(getContextAttributes(queryTree));
 
-    // Build the global set of valid keys: intersection of projections
-    Set<Tuple> validKeys = new HashSet<>();
-        for (Relation rel : relations.values()) {
-            Set<Tuple> proj = project(rel.getTuples(), allAttrs);
-            if (validKeys.isEmpty()) {
-                validKeys.addAll(proj);
-            } else {
-                validKeys.retainAll(proj);
-            }
-        }
-
-        // Prune candidate tuples against valid keys
-        return prune(res.getC(), allAttrs, validKeys);
+        // Filter the output C to only contain full tuples (with all attributes)
+        return prune(res.getC(), allAttrs);
     }
 
     /** Recursive LW(u) procedure */
@@ -77,7 +66,7 @@ public class LoomisWhitneyInstance {
         // threshold = P / |D_R| where P is the AGM bound
         int p = (int) getSizeBound();
         int threshold = Math.max(1, p / Math.max(1, D_R.size()));
-        Set<Tuple> G = selectTop(F, threshold);
+        Set<Tuple> G = selectTop(F, threshold);//fix needed
 
         Set<Tuple> C, D;
         if (node.isRoot()) {
@@ -163,15 +152,26 @@ public class LoomisWhitneyInstance {
         return selected;
     }
 
-    private Set<Tuple> prune(Set<Tuple> tuples, List<String> separator, Set<Tuple> validKeys) {
-    Set<Tuple> pruned = new HashSet<>();
-    for (Tuple t : tuples) {
-        Tuple key = t.projectOn(separator);
-        if (validKeys.contains(key)) {
-            pruned.add(t);
+    private Set<Tuple> prune(Set<Tuple> candidates, List<String> allAttrs) {
+        Set<Tuple> finalResult = new HashSet<>();
+        for (Tuple t : candidates) {
+            if (t.getAttributeMap().keySet().containsAll(allAttrs)) {
+                // Ensure the tuple is valid across all base relations
+                boolean valid = true;
+                for (Relation rel : relations.values()) {
+                    List<String> relCols = rel.getColumns();
+                    Tuple projected = t.projectOn(relCols);
+                    if (!rel.getTuples().contains(projected)) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    finalResult.add(t);
+                }
+            }
         }
+        return finalResult;
     }
-    return pruned;
-}
 
 }
