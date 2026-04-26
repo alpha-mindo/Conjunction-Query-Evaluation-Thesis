@@ -119,13 +119,26 @@ public class Tuple {
         if (this == o) return true;
         if (!(o instanceof Tuple)) return false;
         Tuple tuple = (Tuple) o;
-        return Objects.equals(values, tuple.values) &&
-            Objects.equals(attributeMap, tuple.attributeMap);
+        
+        // Compare attribute map values instead of relying on list order
+        if (!this.attributeMap.keySet().equals(tuple.attributeMap.keySet())) return false;
+        
+        for (String attr : this.attributeMap.keySet()) {
+            Object thisVal = this.getValueByAttribute(attr);
+            Object otherVal = tuple.getValueByAttribute(attr);
+            if (!Objects.equals(thisVal, otherVal)) return false;
+        }
+        return true;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(values, attributeMap);
+        int result = 0;
+        for (Map.Entry<String, Integer> entry : attributeMap.entrySet()) {
+            Object val = values.get(entry.getValue());
+            result += Objects.hash(entry.getKey(), val);
+        }
+        return result;
     }
     
     @Override

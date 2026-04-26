@@ -39,7 +39,32 @@ public class TracingLoomisWhitney {
     /** Run the algorithm, populate the step list, return the final result. */
     public Set<Tuple> execute() {
         steps.clear();
-        return loomisWhitney(tree).getC();
+        Set<Tuple> raw = loomisWhitney(tree).getC();
+        
+        Set<String> allAttrs = new HashSet<>();
+        for (Relation r : relations.values()) {
+            allAttrs.addAll(r.getColumns());
+        }
+        return prune(raw, new ArrayList<>(allAttrs));
+    }
+
+    private Set<Tuple> prune(Set<Tuple> candidates, List<String> allAttrs) {
+        Set<Tuple> finalResult = new HashSet<>();
+        for (Tuple t : candidates) {
+            if (t.getAttributeMap().keySet().containsAll(allAttrs)) {
+                boolean valid = true;
+                for (Relation rel : relations.values()) {
+                    List<String> relCols = rel.getColumns();
+                    Tuple projected = t.projectOn(relCols);
+                    if (!rel.getTuples().contains(projected)) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) finalResult.add(t);
+            }
+        }
+        return finalResult;
     }
 
     private double computeLWBound(int n) {
