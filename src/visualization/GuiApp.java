@@ -116,16 +116,18 @@ public class GuiApp extends Application {
         loadCsvButton.setOnAction(e -> {
             FileChooser chooser = new FileChooser();
             chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
-            File file = chooser.showOpenDialog(primaryStage);
-            if (file != null) {
-                String name = file.getName().replaceFirst("[.][^.]+$", "");
-                try {
-                    Relation rel = loadRelationFromCsv(name, file);
-                    memoryRelations.put(name, rel);
-                    refreshTableList();
-                } catch (Exception ex) {
-                    showError("CSV Load Error", ex.getMessage());
+            List<File> files = chooser.showOpenMultipleDialog(primaryStage);
+            if (files != null) {
+                for (File file : files) {
+                    String name = file.getName().replaceFirst("[.][^.]+$", "");
+                    try {
+                        Relation rel = loadRelationFromCsv(name, file);
+                        memoryRelations.put(name, rel);
+                    } catch (Exception ex) {
+                        showError("CSV Load Error", "Failed to load " + file.getName() + ": " + ex.getMessage());
+                    }
                 }
+                refreshTableList();
             }
         });
 
