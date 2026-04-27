@@ -63,10 +63,27 @@ public class LoomisWhitneyInstance {
         Set<Tuple> F = project(D_L, lambda);
         F.retainAll(project(D_R, lambda));
 
-        // threshold = P / |D_R| where P is the AGM bound
-        int p = (int) getSizeBound();
-        int threshold = Math.max(1, p / Math.max(1, D_R.size()));
-        Set<Tuple> G = selectTop(F, threshold);//fix needed
+        Set<Tuple> G = new HashSet<>();
+        if (D_R.isEmpty()) {
+            F.clear(); // F = G = ∅ if |DR| = 0
+        } else {
+            double p = getSizeBound();
+            int threshold = (int) Math.ceil(p / D_R.size()); // ⌈P / |DR|⌉
+            
+            for (Tuple t : F) {
+                // Calculate |D_L[t]|: count tuples in D_L that match t on lambda
+                long dl_t_size = 0;
+                for (Tuple dl : D_L) {
+                    if (dl.projectOn(lambda).equals(t)) {
+                        dl_t_size++;
+                    }
+                }
+                
+                if (dl_t_size + 1 <= threshold) {
+                    G.add(t);
+                }
+            }
+        }
 
         Set<Tuple> C, D;
         if (node.isRoot()) {
@@ -140,16 +157,6 @@ public class LoomisWhitneyInstance {
             }
         }
         return result;
-    }
-
-    private Set<Tuple> selectTop(Set<Tuple> tuples, int k) {
-        Set<Tuple> selected = new HashSet<>();
-        int count = 0;
-        for (Tuple t : tuples) {
-            if (count++ >= k) break;
-            selected.add(t);
-        }
-        return selected;
     }
 
     private Set<Tuple> prune(Set<Tuple> candidates, List<String> allAttrs) {
