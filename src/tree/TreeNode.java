@@ -5,11 +5,29 @@ public class TreeNode {
     private TreeNode left;
     private TreeNode right;
     private TreeNode parent;
+    private java.util.List<String> universe;
+    private java.util.List<String> edgeK;
     
     public TreeNode(String label) {
         this.label = label;
     }
     
+    public java.util.List<String> getUniverse() {
+        return universe;
+    }
+    
+    public void setUniverse(java.util.List<String> universe) {
+        this.universe = universe;
+    }
+    
+    public java.util.List<String> getEdgeK() {
+        return edgeK;
+    }
+    
+    public void setEdgeK(java.util.List<String> edgeK) {
+        this.edgeK = edgeK;
+    }
+
     public String getLabel() {
         return label;
     }

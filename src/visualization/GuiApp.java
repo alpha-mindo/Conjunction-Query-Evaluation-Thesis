@@ -11,6 +11,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import tree.QueryTreeBuilder;
 import tree.TreeNode;
+import Algorithms.LoomisWhitneyInstance;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -26,6 +27,7 @@ public class GuiApp extends Application {
     private TextArea resultArea;
     private TextArea logArea;
     private ComboBox<String> algoSelector;
+    private TextField queryInput;
     private ListView<String> tableListView;
     private BarChart<String, Number> statChart;
     private Map<String, Relation> memoryRelations = new HashMap<>();
@@ -48,7 +50,8 @@ public class GuiApp extends Application {
         algoSelector.setValue("Loomis-Whitney WCOJ");
 
         Label queryLabel = new Label("Query (e.g. R, S):");
-        TextField queryInput = new TextField();
+        queryInput = new TextField();
+        queryInput.setText("R, S, T"); // Default
         queryInput.setPromptText("Relation names...");
         queryInput.setPrefWidth(200);
         Button runButton = new Button("Run Query");
@@ -146,6 +149,9 @@ public class GuiApp extends Application {
 
     private void refreshTableList() {
         tableListView.getItems().setAll(memoryRelations.keySet());
+        if (!memoryRelations.isEmpty()) {
+            queryInput.setText(String.join(", ", memoryRelations.keySet()));
+        }
     }
 
     private void openManualDataEntryDialog() {
@@ -298,16 +304,14 @@ public class GuiApp extends Application {
             double sizeBound = 0.0;
 
             if (algo.equals("Loomis-Whitney WCOJ")) {
-                TracingLoomisWhitney lw = new TracingLoomisWhitney(relations);
+                LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations, root);
                 sizeBound = lw.getSizeBound();
                 logArea.appendText(String.format("Size Bound: %.2f\n\n", sizeBound));
                 results = lw.execute();
 
-                logArea.appendText("--- Execution Trace ---\n");
-                for (AlgorithmStep step : lw.getSteps()) {
-                    logArea.appendText(step.heading + "\n");
-                    logArea.appendText(step.narrative + "\n\n");
-                }
+                logArea.appendText("--- Execution Complete ---\n");
+                logArea.appendText("Successfully executed using the core algorithm logic (Algorithms.LoomisWhitneyInstance).\n");
+                logArea.appendText("Check the console or analytics tab for pure execution metrics.\n");
             } else {
                 // Future algorithms will go here
                 results = new HashSet<>(); 
@@ -338,7 +342,15 @@ public class GuiApp extends Application {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String headerLine = br.readLine();
             if (headerLine == null) throw new IOException("CSV file is empty");
-            List<String> columns = Arrays.asList(headerLine.split(","));
+            
+            // Remove potential UTF-8 BOM commonly found in text files
+            if (headerLine.startsWith("\uFEFF")) {
+                headerLine = headerLine.substring(1);
+            }
+            
+            String[] rawHeaders = headerLine.split(",");
+            List<String> columns = new ArrayList<>();
+            for (String h : rawHeaders) columns.add(h.trim());
             
             Relation rel = new Relation(name, columns);
             
@@ -349,7 +361,7 @@ public class GuiApp extends Application {
                 // Pad with nulls if some columns are missing
                 Object[] objValues = new Object[columns.size()];
                 for (int i = 0; i < columns.size(); i++) {
-                    objValues[i] = i < values.length ? values[i].trim() : null;
+                    objValues[i] = i < values.length ? values[i].trim().replaceAll("^\"|\"$", "") : null;
                 }
                 rel.addRow(objValues);
             }
