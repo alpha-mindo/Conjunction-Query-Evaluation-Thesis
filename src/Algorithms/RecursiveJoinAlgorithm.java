@@ -5,11 +5,6 @@ import database.Tuple;
 import tree.TreeNode;
 import java.util.*;
 
-/**
- * Implements a worst-case optimal recursive join algorithm.
- * This class translates the theoretical operations (projections, fractional edge covers)
- * into a concrete recursive structure.
- */
 public class RecursiveJoinAlgorithm {
 
     private final Map<String, Relation> relations;
@@ -18,14 +13,6 @@ public class RecursiveJoinAlgorithm {
         this.relations = relations;
     }
 
-    /**
-     * Recursively evaluates the join.
-     *
-     * @param currentNode The current node in the query decomposition tree.
-     * @param weights     Fractional edge cover weights for the relations.
-     * @param boundTuple  The tuple representing values already bound by ancestors in the tree.
-     * @return A set of tuples representing the join result for this subtree.
-     */
     public Set<Tuple> recursiveJoin(TreeNode currentNode, Map<String, Double> weights, Tuple boundTuple) {
         Set<Tuple> results = new HashSet<>();
 
@@ -136,19 +123,19 @@ public class RecursiveJoinAlgorithm {
     private int argminProjection(List<String> universe, int numRelations, Tuple boundTuple) {
         return 0; 
     }
-    
+
     private Set<Tuple> project(Relation rel, List<String> attrs, Tuple boundTuple) {
         return new HashSet<>();
     }
-    
+
     private boolean checkMembership(Tuple extendedTuple, Tuple intersectionTuple, Map<String, Relation> rels, List<String> intersectionAttrs) {
         return true;
     }
-    
+
     private double productProjections(Tuple extendedTuple, List<String> intersectionAttrs, Map<String, Double> weights) {
         return 0.0;
     }
-    
+
     private Map<String, Double> scaleWeights(Map<String, Double> weights, double targetWeight) {
         return new HashMap<>();
     }
