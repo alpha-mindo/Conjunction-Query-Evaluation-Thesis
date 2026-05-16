@@ -106,7 +106,7 @@ public class QueryTreeBuilder {
         }
         
         // 1. Build Hypergraph
-        List<Set<String>> hypergraph = buildHypergraph(relations);
+        buildHypergraph(relations);
         
         // 2. Compute Fractional Edge Cover
         Map<String, Double> weights = computeFractionalCover(relations);

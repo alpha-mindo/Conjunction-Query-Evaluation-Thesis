@@ -297,14 +297,14 @@ public class GuiApp extends Application {
 
             long startTime = System.nanoTime();
 
-            TreeNode root = QueryTreeBuilder.build(relations);
+            TreeNode root = QueryTreeBuilder.buildForLoomisWhitney(relations);
             logArea.appendText("Query tree: " + root.getLabel() + "\n");
 
             Set<Tuple> results;
             double sizeBound = 0.0;
 
             if (algo.equals("Loomis-Whitney WCOJ")) {
-                LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations, root);
+                LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations);
                 sizeBound = lw.getSizeBound();
                 logArea.appendText(String.format("Size Bound: %.2f\n\n", sizeBound));
                 results = lw.execute();

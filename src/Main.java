@@ -47,10 +47,10 @@ public class Main {
         System.out.println();
         S.printTable();
 
-        TreeNode root = QueryTreeBuilder.build(relations);
+        TreeNode root = QueryTreeBuilder.buildForLoomisWhitney(relations);
         System.out.println("\nQuery tree: " + root.getLabel());
 
-        LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations, root);  
+        LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations);  
         System.out.println("\nSize Bound: " + lw.getSizeBound());
 
         Set<Tuple> results = lw.execute();
@@ -85,10 +85,10 @@ public class Main {
         System.out.println();
         T.printTable();
 
-        TreeNode root = QueryTreeBuilder.build(relations);
+        TreeNode root = QueryTreeBuilder.buildForLoomisWhitney(relations);
         System.out.println("\nQuery tree: " + root.getLabel());
 
-        LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations, root);  
+        LoomisWhitneyInstance lw = new LoomisWhitneyInstance(relations);  
         System.out.println("\nSize Bound: " + lw.getSizeBound());
 
         Set<Tuple> results = lw.execute();

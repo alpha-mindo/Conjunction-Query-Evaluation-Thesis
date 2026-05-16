@@ -27,7 +27,7 @@ public class TracingLoomisWhitney {
 
     public TracingLoomisWhitney(Map<String, Relation> relations) {
         this.relations = relations;
-        this.tree      = QueryTreeBuilder.build(relations);
+        this.tree      = QueryTreeBuilder.buildForLoomisWhitney(relations);
         computeNodeSchemas(tree);
     }
 
