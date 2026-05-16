@@ -10,9 +10,9 @@ public class LoomisWhitneyInstance {
     private final Map<String, Relation> relations;
     private final TreeNode queryTree;
 
-    public LoomisWhitneyInstance(Map<String, Relation> relations, TreeNode queryTree) {
+    public LoomisWhitneyInstance(Map<String, Relation> relations) {
         this.relations = relations;
-        this.queryTree = queryTree;
+        this.queryTree = tree.QueryTreeBuilder.buildForLoomisWhitney(relations);
     }
 
     /** Line 2: Compute LW bound P = ∏ |R_e|^(1/(n-1)) */

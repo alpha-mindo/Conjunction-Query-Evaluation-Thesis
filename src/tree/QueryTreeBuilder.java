@@ -26,13 +26,13 @@ import java.util.*;
 public class QueryTreeBuilder {
 
     /**
-     * Build and return the root of a binary query tree for the given relations.
+     * Build and return the root of a binary query tree for Loomis-Whitney.
      *
      * @param relations map of relation-name → Relation (must not be empty)
      * @return root TreeNode of the constructed join tree
      * @throws IllegalArgumentException if {@code relations} is empty
      */
-    public static TreeNode build(Map<String, Relation> relations) {
+    public static TreeNode buildForLoomisWhitney(Map<String, Relation> relations) {
         if (relations == null || relations.isEmpty()) {
             throw new IllegalArgumentException("Cannot build a query tree from an empty relation set.");
         }
@@ -92,6 +92,137 @@ public class QueryTreeBuilder {
         }
 
         return pool.get(0).node;
+    }
+
+    /**
+     * Builds a query tree specifically for the General Recursive Join (Worst-Case Optimal Join).
+     * 
+     * @param relations map of relation-name → Relation
+     * @return root TreeNode of the constructed join tree
+     */
+    public static TreeNode buildForRecursiveJoin(Map<String, Relation> relations) {
+        if (relations == null || relations.isEmpty()) {
+            throw new IllegalArgumentException("Cannot build a query tree from an empty relation set.");
+        }
+        
+        // 1. Build Hypergraph
+        List<Set<String>> hypergraph = buildHypergraph(relations);
+        
+        // 2. Compute Fractional Edge Cover
+        Map<String, Double> weights = computeFractionalCover(relations);
+        
+        // 3. Construct Recursive Query Tree
+        List<TreeNode> leaves = new ArrayList<>();
+        for (Map.Entry<String, Relation> entry : relations.entrySet()) {
+            TreeNode leaf = new TreeNode(entry.getKey());
+            leaf.setUniverse(entry.getValue().getSchema());
+            leaves.add(leaf);
+        }
+        
+        TreeNode root = buildRecursiveTree(leaves, weights);
+        return root;
+    }
+
+    private static List<Set<String>> buildHypergraph(Map<String, Relation> relations) {
+        List<Set<String>> hypergraph = new ArrayList<>();
+        for (Relation r : relations.values()) {
+            hypergraph.add(new HashSet<>(r.getSchema()));
+        }
+        return hypergraph;
+    }
+
+    /**
+     * Computes a rough greedy fractional edge cover.
+     * Since Java lacks a built-in LP solver, this heuristic assigns weights 
+     * based on attribute overlap frequency.
+     */
+    private static Map<String, Double> computeFractionalCover(Map<String, Relation> relations) {
+        Map<String, Double> weights = new HashMap<>();
+        Map<String, Integer> attributeFrequencies = new HashMap<>();
+        
+        // Count frequencies of each attribute
+        for (Relation r : relations.values()) {
+            for (String attr : r.getSchema()) {
+                attributeFrequencies.put(attr, attributeFrequencies.getOrDefault(attr, 0) + 1);
+            }
+        }
+        
+        // Assign a fractional weight to each relation based on the max inverse frequency of its attributes
+        for (Map.Entry<String, Relation> entry : relations.entrySet()) {
+            double maxWeightNeeded = 0.0;
+            for (String attr : entry.getValue().getSchema()) {
+                double weightForAttr = 1.0 / attributeFrequencies.get(attr);
+                if (weightForAttr > maxWeightNeeded) {
+                    maxWeightNeeded = weightForAttr;
+                }
+            }
+            // For general WCOJ, edge weight e_k is attached to the relation
+            weights.put("e_" + entry.getKey(), maxWeightNeeded);
+        }
+        
+        return weights;
+    }
+
+    /**
+     * Recursively partitions relations into a binary tree structure.
+     */
+    private static TreeNode buildRecursiveTree(List<TreeNode> nodes, Map<String, Double> weights) {
+        if (nodes.size() == 1) {
+            return nodes.get(0);
+        }
+
+        // Greedy partition: pick two nodes with the highest overlap to merge
+        int bestI = 0, bestJ = 1;
+        int maxOverlap = -1;
+
+        for (int i = 0; i < nodes.size(); i++) {
+            for (int j = i + 1; j < nodes.size(); j++) {
+                Set<String> attrsI = new HashSet<>(nodes.get(i).getUniverse()); // getUniverse needs to reflect current subtree attributes
+                Set<String> attrsJ = new HashSet<>(nodes.get(j).getUniverse());
+                attrsI.retainAll(attrsJ);
+                if (attrsI.size() > maxOverlap) {
+                    maxOverlap = attrsI.size();
+                    bestI = i;
+                    bestJ = j;
+                }
+            }
+        }
+
+        TreeNode left = nodes.remove(Math.max(bestI, bestJ));
+        TreeNode right = nodes.remove(Math.min(bestI, bestJ));
+
+        TreeNode internal = new TreeNode(left.getLabel() + "_" + right.getLabel());
+        internal.setLeft(left);
+        internal.setRight(right);
+        
+        // Define the universe for the new internal node (union of children's universes)
+        Set<String> union = new HashSet<>();
+        if (left.getUniverse() != null) union.addAll(left.getUniverse());
+        if (right.getUniverse() != null) union.addAll(right.getUniverse());
+        internal.setUniverse(new ArrayList<>(union));
+        
+        // Set edge attributes (separator attributes)
+        Set<String> separator = new HashSet<>();
+        if (left.getUniverse() != null) separator.addAll(left.getUniverse());
+        if (right.getUniverse() != null) separator.retainAll(right.getUniverse());
+        internal.setEdgeK(new ArrayList<>(separator));
+        
+        nodes.add(internal);
+
+        return buildRecursiveTree(nodes, weights);
+    }
+    
+    /**
+     * Traverses the tree to generate a printable join plan.
+     */
+    public static String getJoinPlan(TreeNode node) {
+        if (node.isLeaf()) {
+            return "Scan(" + node.getLabel() + ")";
+        }
+        String leftPlan = getJoinPlan(node.leftChild());
+        String rightPlan = getJoinPlan(node.rightChild());
+        
+        return "Join [" + String.join(",", node.getEdgeK()) + "] (" + leftPlan + " ⨝ " + rightPlan + ")";
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ public class RecursiveJoinAlgorithm {
 
     /** Top-level join execution */
     public Set<Tuple> execute(Map<String, Double> weights) {
-        TreeNode root = tree.QueryTreeBuilder.build(relations);
+        TreeNode root = tree.QueryTreeBuilder.buildForRecursiveJoin(relations);
         Tuple emptyBoundTuple = new Tuple(new HashMap<>());
         return recursiveJoin(root, weights, emptyBoundTuple);
     }
