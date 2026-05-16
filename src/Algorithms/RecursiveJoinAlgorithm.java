@@ -3,140 +3,146 @@ package Algorithms;
 import database.Relation;
 import database.Tuple;
 import tree.TreeNode;
+
 import java.util.*;
 
 public class RecursiveJoinAlgorithm {
 
+    // Input relations
     private final Map<String, Relation> relations;
 
     public RecursiveJoinAlgorithm(Map<String, Relation> relations) {
         this.relations = relations;
     }
 
-    public Set<Tuple> recursiveJoin(TreeNode currentNode, Map<String, Double> weights, Tuple boundTuple) {
+    /** Top-level join execution */
+    public Set<Tuple> execute(Map<String, Double> weights) {
+        TreeNode root = tree.QueryTreeBuilder.build(relations);
+        Tuple emptyBoundTuple = new Tuple(new HashMap<>());
+        return recursiveJoin(root, weights, emptyBoundTuple);
+    }
+
+    /** Recursive Join procedure */
+    public Set<Tuple> recursiveJoin(TreeNode node, Map<String, Double> weights, Tuple boundTuple) {
         Set<Tuple> results = new HashSet<>();
 
-        // Base Case: Leaf node. Produce base relation tuples matching bound attributes.
-        if (currentNode.isLeaf()) {
-            int numRelations = Integer.parseInt(currentNode.getLabel());
-            List<String> universe = currentNode.getUniverse();
+        // Base Case: Leaf node
+        if (node.isLeaf()) {
+            int numRelations = Integer.parseInt(node.getLabel());
+            List<String> universe = node.getUniverse();
 
-            // Find the relation that has the smallest projection size to optimize intersection
-            int bestRelationIndex = argminProjection(universe, numRelations, boundTuple);
-            Relation bestRelation = relations.get("R" + bestRelationIndex);
+            // Pick relation with smallest projection
+            int bestIndex = argminProjection(universe, numRelations, boundTuple);
+            Relation bestRelation = relations.get("R" + bestIndex);
 
-            // Iterate over the smallest projection and intersect with remaining relations
-            for (Tuple candidateTuple : project(bestRelation, universe, boundTuple)) {
-                boolean isPresentInAll = true;
+            // Intersect with remaining relations
+            for (Tuple candidate : project(bestRelation, universe, boundTuple)) {
+                boolean isValidCandidate = true;
 
                 for (int i = 1; i <= numRelations; i++) {
-                    if (i == bestRelationIndex) continue;
+                    if (i == bestIndex) continue; 
                     
                     Relation otherRelation = relations.get("R" + i);
-                    if (!project(otherRelation, universe, boundTuple).contains(candidateTuple)) {
-                        isPresentInAll = false;
+                    if (!project(otherRelation, universe, boundTuple).contains(candidate)) {
+                        isValidCandidate = false;
                         break;
                     }
                 }
                 
-                if (isPresentInAll) {
-                    results.add(boundTuple.join(candidateTuple));
+                if (isValidCandidate) {
+                    results.add(boundTuple.join(candidate));
                 }
             }
             return results;
         }
 
-        // Recursive Case: Internal node processing
+        // Recursive Case: Internal Node
         Set<Tuple> leftResults;
-        if (currentNode.leftChild() == null) {
-            leftResults = new HashSet<>();
-            leftResults.add(boundTuple);
+        if (node.leftChild() == null) {
+            leftResults = new HashSet<>(Collections.singleton(boundTuple));
         } else {
-            leftResults = recursiveJoin(currentNode.leftChild(), weights, boundTuple);
+            leftResults = recursiveJoin(node.leftChild(), weights, boundTuple);
         }
 
-        // Calculate attribute partitions based on the current edge (relation)
-        List<String> universe = currentNode.getUniverse();
-        List<String> currentEdgeAttrs = currentNode.getEdgeK();
-        
-        List<String> missingAttrs = new ArrayList<>(universe);
-        missingAttrs.removeAll(currentEdgeAttrs);
-        
-        List<String> intersectionAttrs = new ArrayList<>(currentEdgeAttrs);
-        intersectionAttrs.retainAll(universe);
+        List<String> universe = node.getUniverse();
+        List<String> edgeAttributes = node.getEdgeK();
 
-        // If there are no intersecting attributes to join on, return the left results
-        if (intersectionAttrs.isEmpty()) {
+        List<String> intersectionAttributes = new ArrayList<>(edgeAttributes);
+        intersectionAttributes.retainAll(universe);
+
+        if (intersectionAttributes.isEmpty()) {
             return leftResults;
         }
 
         Relation relationK = relations.get("Rk");
 
-        // Iterate over results from the left branch
         for (Tuple extendedTuple : leftResults) {
             double edgeWeight = weights.getOrDefault("e_k", 1.0);
 
-            // Heavy relation branch: evaluate directly
+            // Heavy branch: edgeWeight >= 1.0
             if (edgeWeight >= 1.0) {
-                evaluateHeavyBranch(results, extendedTuple, boundTuple, relationK, intersectionAttrs);
+                evaluateHeavyBranch(results, extendedTuple, relationK, intersectionAttributes);
                 continue;
             }
 
-            // Test inequalities to determine whether to process as a heavy or light branch
-            double projectedCapacity = productProjections(extendedTuple, intersectionAttrs, weights);
-            double relationKSize = project(relationK, intersectionAttrs, boundTuple).size();
+            // Light branch: AGM bound inequality test
+            double projectedCapacity = productProjections(extendedTuple, intersectionAttributes, weights);
+            double relationKSize = project(relationK, intersectionAttributes, boundTuple).size();
 
             if (projectedCapacity < relationKSize) {
-                // Light relation branch: scale weights and recurse on right child
+                // Scale weights and recurse
                 Map<String, Double> scaledWeights = scaleWeights(weights, edgeWeight);
-                Set<Tuple> rightResults = recursiveJoin(currentNode.rightChild(), scaledWeights, extendedTuple);
+                Set<Tuple> rightResults = recursiveJoin(node.rightChild(), scaledWeights, extendedTuple);
 
-                // Filter valid tuples that exist in relation K
                 for (Tuple rightTuple : rightResults) {
-                    Tuple subTuple = rightTuple.projectOn(intersectionAttrs);
-                    if (project(relationK, intersectionAttrs, boundTuple).contains(subTuple)) {
+                    Tuple subTuple = rightTuple.projectOn(intersectionAttributes);
+                    if (project(relationK, intersectionAttributes, boundTuple).contains(subTuple)) {
                         results.add(rightTuple);
                     }
                 }
             } else {
-                // Treated as heavy branch fallback
-                evaluateHeavyBranch(results, extendedTuple, boundTuple, relationK, intersectionAttrs);
+                evaluateHeavyBranch(results, extendedTuple, relationK, intersectionAttributes);
             }
         }
 
         return results;
     }
 
-    /**
-     * Processes heavy edges by performing an immediate set intersection and adding to results.
-     */
-    private void evaluateHeavyBranch(Set<Tuple> results, Tuple extendedTuple, Tuple boundTuple, 
-                                     Relation relationK, List<String> intersectionAttrs) {
-        for (Tuple intersectionTuple : project(relationK, intersectionAttrs, boundTuple)) {
-            if (checkMembership(extendedTuple, intersectionTuple, relations, intersectionAttrs)) {
+    // --- Helpers ---
+
+    private void evaluateHeavyBranch(Set<Tuple> results, Tuple extendedTuple, 
+                                     Relation relationK, List<String> intersectionAttributes) {
+        for (Tuple intersectionTuple : project(relationK, intersectionAttributes, extendedTuple)) {
+            if (checkMembership(extendedTuple, intersectionTuple, relations, intersectionAttributes)) {
                 results.add(extendedTuple.join(intersectionTuple));
             }
         }
     }
 
-    // --- Helper stubs corresponding to pseudocode operations ---
     private int argminProjection(List<String> universe, int numRelations, Tuple boundTuple) {
-        return 0; 
+        // TODO: implement logic to pick relation with smallest projection
+        return 1;
     }
 
-    private Set<Tuple> project(Relation rel, List<String> attrs, Tuple boundTuple) {
+    private Set<Tuple> project(Relation rel, List<String> targetAttributes, Tuple boundTuple) {
+        // TODO: implement projection
         return new HashSet<>();
     }
 
-    private boolean checkMembership(Tuple extendedTuple, Tuple intersectionTuple, Map<String, Relation> rels, List<String> intersectionAttrs) {
+    private boolean checkMembership(Tuple extendedTuple, Tuple intersectionTuple, 
+                                    Map<String, Relation> rels, List<String> intersectionAttributes) {
+        // TODO: implement membership test
         return true;
     }
 
-    private double productProjections(Tuple extendedTuple, List<String> intersectionAttrs, Map<String, Double> weights) {
+    private double productProjections(Tuple extendedTuple, List<String> intersectionAttributes, 
+                                      Map<String, Double> weights) {
+        // TODO: calculate AGM bound capacity
         return 0.0;
     }
 
-    private Map<String, Double> scaleWeights(Map<String, Double> weights, double targetWeight) {
-        return new HashMap<>();
+    private Map<String, Double> scaleWeights(Map<String, Double> weights, double edgeWeight) {
+        // TODO: calculate scaled weights
+        return new HashMap<>(weights);
     }
 }
