@@ -120,29 +120,72 @@ public class RecursiveJoinAlgorithm {
     }
 
     private int argminProjection(List<String> universe, int numRelations, Tuple boundTuple) {
-        // TODO: implement logic to pick relation with smallest projection
-        return 1;
+        int bestIndex = 1;
+        int minSize = Integer.MAX_VALUE;
+        for (int i = 1; i <= numRelations; i++) {
+            Relation r = relations.get("R" + i);
+            if (r != null) {
+                int size = project(r, universe, boundTuple).size();
+                if (size < minSize) {
+                    minSize = size;
+                    bestIndex = i;
+                }
+            }
+        }
+        return bestIndex;
     }
 
     private Set<Tuple> project(Relation rel, List<String> targetAttributes, Tuple boundTuple) {
-        // TODO: implement projection
-        return new HashSet<>();
+        Set<Tuple> projected = new HashSet<>();
+        if (rel == null) return projected;
+        
+        for (Tuple t : rel.getTuples()) {
+            if (t.canJoin(boundTuple)) {
+                projected.add(t.projectOn(targetAttributes));
+            }
+        }
+        return projected;
     }
 
     private boolean checkMembership(Tuple extendedTuple, Tuple intersectionTuple, 
                                     Map<String, Relation> rels, List<String> intersectionAttributes) {
-        // TODO: implement membership test
+        Tuple combined = extendedTuple.join(intersectionTuple);
+        for (Relation rel : rels.values()) {
+            // Only check relations whose attributes are fully bound by the combined tuple
+            if (combined.getAttributeMap().keySet().containsAll(rel.getColumns())) {
+                Tuple proj = combined.projectOn(rel.getColumns());
+                if (!rel.getTuples().contains(proj)) {
+                    return false;
+                }
+            }
+        }
         return true;
     }
 
     private double productProjections(Tuple extendedTuple, List<String> intersectionAttributes, 
                                       Map<String, Double> weights) {
-        // TODO: calculate AGM bound capacity
-        return 0.0;
+        double capacity = 1.0;
+        for (Map.Entry<String, Relation> entry : relations.entrySet()) {
+            String relName = entry.getKey();
+            Relation rel = entry.getValue();
+            double weight = weights.getOrDefault("e_" + relName, 0.0);
+            
+            if (weight > 0) {
+                int projSize = project(rel, intersectionAttributes, extendedTuple).size();
+                capacity *= Math.pow(projSize, weight);
+            }
+        }
+        return capacity;
     }
 
     private Map<String, Double> scaleWeights(Map<String, Double> weights, double edgeWeight) {
-        // TODO: calculate scaled weights
-        return new HashMap<>(weights);
+        Map<String, Double> scaled = new HashMap<>();
+        double factor = 1.0 - edgeWeight;
+        if (factor <= 0.0001) factor = 1.0; // Safely avoid division by zero
+        
+        for (Map.Entry<String, Double> entry : weights.entrySet()) {
+            scaled.put(entry.getKey(), entry.getValue() / factor);
+        }
+        return scaled;
     }
 }
