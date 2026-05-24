@@ -12,6 +12,11 @@ public class Relation {
     private final String       name;
     private final List<String> columns; // ordered column names
     private final List<Tuple>  rows;    // ordered rows (insertion order)
+    private final Set<Tuple>   rowSet;  // fast lookup for full tuple membership
+
+    // Index mappings powered by the total attribute order
+    private List<String> orderedColumns;
+    private final Map<Integer, Map<Tuple, List<Tuple>>> prefixIndices;
 
     // ── Constructors ──────────────────────────────────────────────────────────
 
@@ -19,6 +24,8 @@ public class Relation {
         this.name    = name;
         this.columns = new ArrayList<>(columns);
         this.rows    = new ArrayList<>();
+        this.rowSet  = new HashSet<>();
+        this.prefixIndices = new HashMap<>();
     }
 
     // ── Schema / column info ──────────────────────────────────────────────────
@@ -45,6 +52,7 @@ public class Relation {
     public void addTuple(Tuple tuple) {
         tuple.setAttributeMap(buildAttributeMap());
         rows.add(tuple);
+        rowSet.add(tuple);
     }
 
     /**
@@ -59,6 +67,7 @@ public class Relation {
         Tuple t = new Tuple(new ArrayList<>(Arrays.asList(values)));
         t.setAttributeMap(buildAttributeMap());
         rows.add(t);
+        rowSet.add(t);
     }
 
     public Tuple getRow(int index)  { return rows.get(index); }
@@ -71,6 +80,57 @@ public class Relation {
 
     public int     size()    { return rows.size(); }
     public boolean isEmpty() { return rows.isEmpty(); }
+    
+    /** Fast membership check. */
+    public boolean contains(Tuple t) { return rowSet.contains(t); }
+
+    // ── Indexing (Algorithm 2) ────────────────────────────────────────────────
+
+    /**
+     * Builds hash indices for the relation partitioned along valid prefixes 
+     * dictated by the global attribute order.
+     */
+    public void buildIndex(List<String> globalOrder) {
+        orderedColumns = new ArrayList<>();
+        for (String attr : globalOrder) {
+            if (columns.contains(attr)) {
+                orderedColumns.add(attr);
+            }
+        }
+        
+        prefixIndices.clear();
+        for (int i = 1; i <= orderedColumns.size(); i++) {
+            List<String> prefix = orderedColumns.subList(0, i);
+            Map<Tuple, List<Tuple>> hashIndex = new HashMap<>();
+            
+            for (Tuple t : rows) {
+                Tuple boundKey = t.projectOn(prefix); // The bound prefix acts as the hash key
+                hashIndex.computeIfAbsent(boundKey, k -> new ArrayList<>()).add(t);
+            }
+            prefixIndices.put(i, hashIndex);
+        }
+    }
+
+    /**
+     * Returns tuples matching the longest available prefix available 
+     * in the given boundTuple limit according to the pre-built index.
+     */
+    public List<Tuple> getMatchingTuples(Tuple boundTuple) {
+        if (orderedColumns == null) return getRows(); // Fallback to scan if no index built
+        
+        // Find how many sequenced prefix columns the boundTuple contains
+        int matchLen = 0;
+        for (String col : orderedColumns) {
+            if (boundTuple.hasAttribute(col)) matchLen++;
+            else break; 
+        }
+        
+        if (matchLen == 0) return getRows(); // Cannot leverage hash index
+        
+        List<String> prefix = orderedColumns.subList(0, matchLen);
+        Tuple key = boundTuple.projectOn(prefix);
+        return prefixIndices.get(matchLen).getOrDefault(key, Collections.emptyList());
+    }
 
     // ── Column projection ─────────────────────────────────────────────────────
 

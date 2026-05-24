@@ -105,38 +105,134 @@ public class QueryTreeBuilder {
             throw new IllegalArgumentException("Cannot build a query tree from an empty relation set.");
         }
         
-        // 1. Build Hypergraph
-        buildHypergraph(relations);
+        int m = relations.size();
+        Set<String> V = new HashSet<>();
+        List<Set<String>> edges = new ArrayList<>();
         
-        // 2. Compute Fractional Edge Cover
-        Map<String, Double> weights = computeFractionalCover(relations);
-        
-        // 3. Construct Recursive Query Tree
-        List<TreeNode> leaves = new ArrayList<>();
-        for (Map.Entry<String, Relation> entry : relations.entrySet()) {
-            TreeNode leaf = new TreeNode(entry.getKey());
-            leaf.setUniverse(entry.getValue().getSchema());
-            leaves.add(leaf);
+        // Use 1-based indexing for edges to match Algorithm 3
+        edges.add(new HashSet<>()); // dummy at index 0
+        List<String> orderedKeys = new ArrayList<>(relations.keySet());
+        for (int i = 1; i <= m; i++) {
+            Relation r = relations.get("R" + i);
+            if (r != null) {
+                edges.add(new HashSet<>(r.getSchema()));
+                V.addAll(r.getSchema());
+            } else {
+                r = relations.get(orderedKeys.get(i - 1));
+                edges.add(new HashSet<>(r.getSchema()));
+                V.addAll(r.getSchema());
+            }
         }
         
-        TreeNode root = buildRecursiveTree(leaves, weights);
-        return root;
+        return buildTreeAlg3(V, m, edges);
     }
 
-    private static List<Set<String>> buildHypergraph(Map<String, Relation> relations) {
-        List<Set<String>> hypergraph = new ArrayList<>();
-        for (Relation r : relations.values()) {
-            hypergraph.add(new HashSet<>(r.getSchema()));
+    /**
+     * Algorithm 3: Constructing the query plan tree T
+     * 1: if ei ∩ U = ∅, ∀i ∈ [k] then return nil
+     * 2: Create a node u with label(u) ← k and univ(u) = U
+     * 3: if k > 1 and ∄ i ∈ [k] such that U ⊆ ei then
+     * 4:   lc(u) ← build-tree(U \ ek, k − 1)
+     * 5:   rc(u) ← build-tree(U ∩ ek, k − 1)
+     * 6: return u
+     */
+    private static TreeNode buildTreeAlg3(Set<String> U, int k, List<Set<String>> edges) {
+        // Condition 1: if ei \cap U = \emptyset for all i \in [k]
+        boolean allEmpty = true;
+        for (int i = 1; i <= k; i++) {
+            Set<String> intersection = new HashSet<>(edges.get(i));
+            intersection.retainAll(U);
+            if (!intersection.isEmpty()) {
+                allEmpty = false;
+                break;
+            }
         }
-        return hypergraph;
+        
+        if (allEmpty) {
+            return null;
+        }
+
+        // Condition 2: Create node u
+        TreeNode u = new TreeNode(String.valueOf(k));
+        u.setUniverse(new ArrayList<>(U));
+        // Set edgeK = ek for use in the recursive join algorithm
+        u.setEdgeK(new ArrayList<>(edges.get(k)));
+
+        // Condition 3: if k > 1 and there is NO i in [k] such that U is fully covered by e_i
+        boolean isCoveredBySingleEdge = false;
+        for (int i = 1; i <= k; i++) {
+            if (edges.get(i).containsAll(U)) {
+                isCoveredBySingleEdge = true;
+                break;
+            }
+        }
+
+        if (k > 1 && !isCoveredBySingleEdge) {
+            // lc(u) <- buildTree(U \ ek, k - 1)
+            Set<String> U_minus_ek = new HashSet<>(U);
+            U_minus_ek.removeAll(edges.get(k));
+            u.setLeft(buildTreeAlg3(U_minus_ek, k - 1, edges));
+
+            // rc(u) <- buildTree(U \cap ek, k - 1)
+            Set<String> U_cap_ek = new HashSet<>(U);
+            U_cap_ek.retainAll(edges.get(k));
+            u.setRight(buildTreeAlg3(U_cap_ek, k - 1, edges));
+        }
+
+        return u;
+    }
+
+    /**
+     * Algorithm 4: Computing a total order of attributes in V
+     * 1: Let T be the query plan tree with root node u, where univ(u) = V
+     * 2: return getAttributesOrder(u)
+     */
+    public static List<String> computeTotalAttributeOrder(TreeNode root) {
+        List<String> order = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        printAttribs(root, order, visited);
+        return order;
+    }
+
+    private static void printAttribs(TreeNode u, List<String> order, Set<String> visited) {
+        if (u == null) return;
+
+        if (u.isLeaf()) {
+            // print all attributes in univ(u) in an arbitrary order
+            for (String attr : u.getUniverse()) {
+                if (visited.add(attr)) {
+                    order.add(attr);
+                }
+            }
+        } else if (u.leftChild() == null) {
+            printAttribs(u.rightChild(), order, visited);
+        } else if (u.rightChild() == null) {
+            printAttribs(u.leftChild(), order, visited);
+            // print all attributes in univ(u) \ univ(lc(u)) in an arbitrary order
+            Set<String> diff = new HashSet<>(u.getUniverse());
+            if (u.leftChild() != null && u.leftChild().getUniverse() != null) {
+                diff.removeAll(u.leftChild().getUniverse());
+            }
+            for (String attr : diff) {
+                if (visited.add(attr)) {
+                    order.add(attr);
+                }
+            }
+        } else {
+            printAttribs(u.leftChild(), order, visited);
+            printAttribs(u.rightChild(), order, visited);
+        }
     }
 
     /**
      * Computes a rough greedy fractional edge cover.
      * Since Java lacks a built-in LP solver, this heuristic assigns weights 
      * based on attribute overlap frequency.
+     * 
+     * This is made public so the executor algorithm (like RecursiveJoinAlgorithm)
+     * can utilize these weights during the recursive join phase.
      */
-    private static Map<String, Double> computeFractionalCover(Map<String, Relation> relations) {
+    public static Map<String, Double> computeFractionalCover(Map<String, Relation> relations) {
         Map<String, Double> weights = new HashMap<>();
         Map<String, Integer> attributeFrequencies = new HashMap<>();
         
@@ -161,55 +257,6 @@ public class QueryTreeBuilder {
         }
         
         return weights;
-    }
-
-    /**
-     * Recursively partitions relations into a binary tree structure.
-     */
-    private static TreeNode buildRecursiveTree(List<TreeNode> nodes, Map<String, Double> weights) {
-        if (nodes.size() == 1) {
-            return nodes.get(0);
-        }
-
-        // Greedy partition: pick two nodes with the highest overlap to merge
-        int bestI = 0, bestJ = 1;
-        int maxOverlap = -1;
-
-        for (int i = 0; i < nodes.size(); i++) {
-            for (int j = i + 1; j < nodes.size(); j++) {
-                Set<String> attrsI = new HashSet<>(nodes.get(i).getUniverse()); // getUniverse needs to reflect current subtree attributes
-                Set<String> attrsJ = new HashSet<>(nodes.get(j).getUniverse());
-                attrsI.retainAll(attrsJ);
-                if (attrsI.size() > maxOverlap) {
-                    maxOverlap = attrsI.size();
-                    bestI = i;
-                    bestJ = j;
-                }
-            }
-        }
-
-        TreeNode left = nodes.remove(Math.max(bestI, bestJ));
-        TreeNode right = nodes.remove(Math.min(bestI, bestJ));
-
-        TreeNode internal = new TreeNode(left.getLabel() + "_" + right.getLabel());
-        internal.setLeft(left);
-        internal.setRight(right);
-        
-        // Define the universe for the new internal node (union of children's universes)
-        Set<String> union = new HashSet<>();
-        if (left.getUniverse() != null) union.addAll(left.getUniverse());
-        if (right.getUniverse() != null) union.addAll(right.getUniverse());
-        internal.setUniverse(new ArrayList<>(union));
-        
-        // Set edge attributes (separator attributes)
-        Set<String> separator = new HashSet<>();
-        if (left.getUniverse() != null) separator.addAll(left.getUniverse());
-        if (right.getUniverse() != null) separator.retainAll(right.getUniverse());
-        internal.setEdgeK(new ArrayList<>(separator));
-        
-        nodes.add(internal);
-
-        return buildRecursiveTree(nodes, weights);
     }
     
     /**

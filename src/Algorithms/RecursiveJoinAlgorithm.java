@@ -15,9 +15,24 @@ public class RecursiveJoinAlgorithm {
         this.relations = relations;
     }
 
+    /** Top-level join execution without passing weights manually */
+    public Set<Tuple> execute() {
+        Map<String, Double> weights = tree.QueryTreeBuilder.computeFractionalCover(relations);
+        return execute(weights);
+    }
+
     /** Top-level join execution */
     public Set<Tuple> execute(Map<String, Double> weights) {
         TreeNode root = tree.QueryTreeBuilder.buildForRecursiveJoin(relations);
+        
+        // Algorithm 2, Step 2: Compute a total order of attributes
+        List<String> attributeOrder = tree.QueryTreeBuilder.computeTotalAttributeOrder(root);
+        
+        // Step 3: Compute a collection of hash indices for all relations
+        for (Relation rel : relations.values()) {
+            rel.buildIndex(attributeOrder);
+        }
+
         Tuple emptyBoundTuple = new Tuple(new HashMap<>());
         return recursiveJoin(root, weights, emptyBoundTuple);
     }
@@ -74,10 +89,10 @@ public class RecursiveJoinAlgorithm {
             return leftResults;
         }
 
-        Relation relationK = relations.get("Rk");
+        Relation relationK = relations.get("R" + node.getLabel());
 
         for (Tuple extendedTuple : leftResults) {
-            double edgeWeight = weights.getOrDefault("e_k", 1.0);
+            double edgeWeight = weights.getOrDefault("e_R" + node.getLabel(), 1.0);
 
             // Heavy branch: edgeWeight >= 1.0
             if (edgeWeight >= 1.0) {
@@ -139,7 +154,9 @@ public class RecursiveJoinAlgorithm {
         Set<Tuple> projected = new HashSet<>();
         if (rel == null) return projected;
         
-        for (Tuple t : rel.getTuples()) {
+        // Leverage the hash index instead of scanning all tuples linearly
+        List<Tuple> candidates = rel.getMatchingTuples(boundTuple);
+        for (Tuple t : candidates) {
             if (t.canJoin(boundTuple)) {
                 projected.add(t.projectOn(targetAttributes));
             }
@@ -154,7 +171,8 @@ public class RecursiveJoinAlgorithm {
             // Only check relations whose attributes are fully bound by the combined tuple
             if (combined.getAttributeMap().keySet().containsAll(rel.getColumns())) {
                 Tuple proj = combined.projectOn(rel.getColumns());
-                if (!rel.getTuples().contains(proj)) {
+                // Use fast hashset lookup
+                if (!rel.contains(proj)) {
                     return false;
                 }
             }
